@@ -1,0 +1,90 @@
+.queue-container {
+  padding: 10px 0;
+}
+
+.queue-container h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 20px;
+}
+
+.queue-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 25px;
+  background: white;
+  border: 1px solid #eeeeee;
+  border-radius: 12px;
+  margin-bottom: 15px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.ticket-badge {
+  width: 70px;
+  height: 70px;
+  background: #004D40;
+  color: white;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.patient-info {
+  flex: 1;
+}
+
+.patient-info h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 4px;
+}
+
+.patient-info p {
+  font-size: 13px;
+  color: #888888;
+}
+
+.status-badge {
+  padding: 6px 16px;
+  background: #FFF9E6;
+  color: #B8860B;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.send-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  background: #004D40;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.send-btn:hover { background: #003d32; }
+
+.loading-text {
+  color: #888;
+  font-size: 14px;
+}
+
+.empty-text {
+  color: #888;
+  font-size: 14px;
+  text-align: center;
+  padding: 40px;
+}

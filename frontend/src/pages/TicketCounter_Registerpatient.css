@@ -1,0 +1,202 @@
+/* Registration Container Card */
+.register-card {
+  background-color: #ffffff;
+  border: 1px solid #e4ddc9;
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.register-card-header {
+  border-bottom: 2px dashed #e4ddc9;
+  padding-bottom: 15px;
+  margin-bottom: 25px;
+}
+
+.register-card-header h2 {
+  font-family: 'Noto Serif Sinhala', serif;
+  color: #124a2e;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.register-card-header h2 i {
+  color: #c78a3d;
+}
+
+/* 🔔 Highlighted Message Banner */
+.site-highlight-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.site-highlight-banner .banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.site-highlight-banner .banner-content i {
+  font-size: 20px;
+}
+
+/* Red Highlight Banner (Error / Duplicate) */
+.site-highlight-banner.error {
+  background-color: #fde8e8;
+  color: #9b1c1c;
+  border: 1px solid #f8b4b4;
+}
+
+/* Green Highlight Banner (Success) */
+.site-highlight-banner.success {
+  background-color: #def7ec;
+  color: #03543f;
+  border: 1px solid #84e1bc;
+}
+
+/* Close (X) Button */
+.close-banner-btn {
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.close-banner-btn:hover {
+  opacity: 1;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Form Styles */
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.input-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.input-row {
+  display: flex;
+  gap: 20px;
+}
+
+.input-row .input-field-group {
+  flex: 1;
+}
+
+.input-field-group label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #35452f;
+}
+
+.input-field-group input,
+.input-field-group select {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #cccccc;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  background-color: #fdfdfd;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-field-group input:focus,
+.input-field-group select:focus {
+  border-color: #1a5a38;
+  box-shadow: 0 0 0 3px rgba(26, 90, 56, 0.15);
+}
+
+/* Action Buttons Area */
+.action-buttons {
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+.action-buttons button {
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease-in-out;
+}
+
+.action-buttons button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 1. රෝගියා සුරකින්න සහ වෛද්‍යවරයා වෙත යවන්න (Green Button) */
+.btn-save {
+  background-color: #1a5a38;
+  color: #ffffff;
+}
+
+.btn-save:hover:not(:disabled) {
+  background-color: #124a2e;
+  transform: translateY(-1px);
+}
+
+/* 2. අස් කරන්න (Light Red Button) */
+.btn-clear {
+  background-color: #f8dede;
+  color: #c1483f;
+}
+
+.btn-clear:hover:not(:disabled) {
+  background-color: #f1c4c2;
+}
+
+/* Responsive Grid */
+@media (max-width: 600px) {
+  .input-row {
+    flex-direction: column;
+  }
+  .action-buttons {
+    flex-direction: column;
+  }
+  .action-buttons button {
+    width: 100%;
+    justify-content: center;
+  }
+}

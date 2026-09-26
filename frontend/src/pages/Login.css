@@ -1,0 +1,332 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;500;600;700;800&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Noto Sans Sinhala', system-ui, sans-serif;
+}
+
+.ayur-main-bg-wrapper {
+  width: 100vw;
+  height: 100vh;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: hidden; 
+}
+
+.ayur-central-workspace-card {
+  width: 100%;
+  max-width: 1180px;
+  height: 92vh;
+  max-height: 720px;
+  display: flex;
+  background: rgba(255, 255, 255, 0.95); 
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+/* ================= LEFT SIDE LAYOUT DESIGN ================= */
+.ayur-card-left-visual {
+  flex: 1;
+  background-color: rgba(255, 255, 255, 0.3); 
+  padding: 35px 35px 0 35px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.ayur-left-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.ayur-left-logo {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
+
+.ayur-left-brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ayur-left-brand h2 {
+  font-size: 26px; 
+  color: #4a6b2f;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.sub-tagline {
+  font-size: 13px; 
+  color: #555;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.ayur-topic-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 20px; 
+  margin-bottom: 15px;
+}
+
+.ayur-left-main-title {
+  font-size: 34px;
+  color: #3b5e1b;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center; 
+  letter-spacing: 0.2px;
+}
+
+.ayur-left-features-shifted {
+  display: flex;
+  flex-direction: column;
+  gap: 14px; 
+  z-index: 2;
+  margin-top: 15px; 
+  margin-bottom: 5px;
+  padding-left: 20px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.feature-circle-css-icon {
+  width: 42px;
+  height: 42px;
+  background-color: #e2f0d9; 
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.feature-item h4 {
+  font-size: 14.5px;
+  color: #111;
+  font-weight: 700;
+}
+
+.feature-item p {
+  font-size: 12.5px;
+  color: #555;
+}
+
+.ayur-left-footer-zone {
+  margin-top: auto;
+  margin-bottom: 50px; 
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+.ayur-image-lifted-right {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end; 
+  padding-right: 10px;
+  margin-top: -25px; 
+  margin-bottom: 5px;
+}
+
+.ayur-mortar-img {
+  width: 175px;
+  object-fit: contain;
+}
+
+.ayur-final-sentence {
+  font-size: 15px;
+  font-weight: 700;
+  color: #275417; 
+  text-align: center;
+  width: 100%;
+  margin-top: -25px; 
+  letter-spacing: 0.3px;
+}
+
+.ayur-bottom-shape-frame {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  line-height: 0;
+  z-index: 1;
+}
+
+.ayur-bottom-shape-frame img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+/* ================= RIGHT SIDE PANEL (FORM) ================= */
+.ayur-card-right-white-box {
+  flex: 1.2;
+  background-color: #ffffff;
+  padding: 35px 60px; /* ලොගින් පෝරමය මැදට කර පෙන්වීමට padding වැඩි කළා */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ayur-box-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.ayur-box-header h2 {
+  font-size: 26px;
+  color: #333333;
+  font-weight: 700;
+}
+
+.ayur-box-header h2 span {
+  color: #558b2f;
+}
+
+.ayur-box-header p {
+  font-size: 13px;
+  color: #666666;
+  margin-top: 5px;
+}
+
+.ayur-white-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.Login-form-spacing {
+  gap: 20px !important; /* Input අතර පරතරය ලස්සනට තබා ගැනීමට */
+}
+
+.input-group-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group-cell label {
+  font-size: 13px;
+  color: #444444;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-icon {
+  position: absolute;
+  left: 12px;
+  color: #777777;
+  font-size: 14px;
+}
+
+.input-with-icon input,
+.input-with-icon select {
+  width: 100%;
+  height: 44px; /* ලොගින් එකට වඩාත් ගැළපෙන උස */
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  padding: 0 12px 0 36px;
+  font-size: 14px;
+  color: #333333;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-with-icon input:focus,
+.input-with-icon select:focus {
+  border-color: #558b2f;
+}
+
+.ayur-gradient-submit-btn {
+  width: 100%;
+  height: 44px;
+  background: linear-gradient(90deg, #1e5c3f, #558b2f);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  box-shadow: 0 4px 15px rgba(30, 92, 63, 0.2);
+}
+
+.ayur-gradient-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.error-msg {
+  background: #fde3e0;
+  color: #b3311a;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.form-redirect-footer {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  margin-top: 15px;
+}
+
+.form-redirect-footer span {
+  color: #1e5c3f;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+@media (max-width: 950px) {
+  .ayur-main-bg-wrapper {
+    overflow-y: auto;
+  }
+  .ayur-central-workspace-card {
+    flex-direction: column;
+    height: auto;
+    max-height: none;
+  }
+  .ayur-card-left-visual {
+    display: none; 
+  }
+  .ayur-card-right-white-box {
+    padding: 35px 20px;
+  }
+}
