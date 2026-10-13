@@ -10,18 +10,14 @@ import './PharmacyDashboard.css';
 import logoEmblem from '../../assets/logo-top.png';
 import cornerLeaves from '../../assets/corner-leaves.png';
 
-// පෙරනිමි ආයුර්වේද ඖෂධ ලැයිස්තුව
+// නව ආයුර්වේද ඖෂධ ලැයිස්තුව
 const AYURVEDIC_MEDICINES = [
-  'පස්පංගුව',
-  'සීතෝපලාදී චූර්ණය',
-  'හිංග්වාෂ්ටක චූර්ණය',
-  'මහානාරායන තෛලය',
-  'ත්‍රිඵලා ගුග්ගුලු',
-  'චන්දනාසවය',
-  'දශමූලාරිෂ්ටය',
-  'සුදර්ශන චූර්ණය',
-  'පිණ්ඩ තෛලය',
-  'කාසහර ක්වාථය'
+  'ත්‍රිඵලා පෙති',
+  'සරස්වතාරිෂ්ටය',
+  'ජීවලේප ආලේපනය',
+  'බුද්ධරාජ කල්ක',
+  'කොලසැලෙස්මා තෛලය',
+  'අරළු පෙති'
 ];
 
 // ඖෂධ මාත්‍රා විකල්ප (Dosage Options)
@@ -57,13 +53,22 @@ export default function PharmacyInventory() {
   const [minLevel, setMinLevel] = useState('');
   const [dosageOption, setDosageOption] = useState('');
 
-  // 1. Fetch Inventory & Today's Usage Real-time
+  // Real-time Fetching for Inventory & Prescriptions
   useEffect(() => {
     const unsubInventory = onSnapshot(collection(db, 'inventory'), (snapshot) => {
       const list = [];
+      const seenNames = new Set();
+
       snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() });
+        const data = docSnap.data();
+        const trimmedName = data.name?.trim();
+
+        if (trimmedName && !seenNames.has(trimmedName)) {
+          seenNames.add(trimmedName);
+          list.push({ id: docSnap.id, ...data });
+        }
       });
+
       setInventory(list);
       setLoading(false);
     }, (error) => {
@@ -151,9 +156,9 @@ export default function PharmacyInventory() {
     setIsEditing(false);
     setCurrentId(null);
     setMedName(AYURVEDIC_MEDICINES[0]);
-    setCategory('චූර්ණ/ක්වාථ');
+    setCategory('ටැබ්ලට්');
     setQuantity('');
-    setUnit('පැකට්');
+    setUnit('පෙති');
     setMinLevel('10');
     setDosageOption(DOSAGE_OPTIONS[0]);
     setShowModal(true);
@@ -229,9 +234,10 @@ export default function PharmacyInventory() {
           <div className="welcome-msg">
             🌿 ඖෂධ ඉන්වෙන්ටරි කළමනාකරණය
           </div>
+
           <button 
             onClick={handleOpenAddModal}
-            style={{ background: '#1a5a38', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 10px rgba(26,90,56,0.2)' }}
+            style={{ background: '#1a5a38', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
             + නව ඖෂධයක් එකතු කරන්න
           </button>
@@ -265,18 +271,21 @@ export default function PharmacyInventory() {
                   <thead>
                     <tr style={{ borderBottom: '2px solid #f0eae1', color: '#718096', fontSize: '13px', background: '#fcfaf7' }}>
                       <th style={{ padding: '14px 12px' }}>ඖෂධ නම</th>
+                      <th style={{ padding: '14px 12px' }}>ඒකකය</th>
                       <th style={{ padding: '14px 12px' }}>ප්‍රමාණය</th>
-                      <th style={{ padding: '14px 12px' }}>යුනිට්</th>
                       <th style={{ padding: '14px 12px' }}>තත්ත්වය</th>
                       <th style={{ padding: '14px 12px', textAlign: 'center' }}>ක්‍රියා</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredInventory.map((item) => {
-                      const qty = Number(item.quantity || 0);
-                      const minLvl = Number(item.minLevel || 10);
-                      const isLow = qty <= minLvl;
+                      const totalQty = Number(item.quantity || 0);
                       const todayUsed = todaysUsage[item.name?.trim()] || 0;
+                      // රෝගීන්ට නිකුත් කළ ප්‍රමාණයත් සමඟ ඉන්වෙන්ටරි ප්‍රමාණය Real-time ලෙස අඩු කර පෙන්වීම
+                      const currentQty = Math.max(0, totalQty - todayUsed);
+
+                      const minLvl = Number(item.minLevel || 10);
+                      const isLow = currentQty <= minLvl;
 
                       return (
                         <tr key={item.id} style={{ borderBottom: '1px solid #f2ede4', fontSize: '14px' }}>
@@ -284,16 +293,19 @@ export default function PharmacyInventory() {
                             {item.name}
                             {todayUsed > 0 && (
                               <div style={{ fontSize: '11px', color: '#d97706', marginTop: '4px', fontWeight: 'normal' }}>
-                                ⚡ අද නිකුත් කර ඇත: <strong>{todayUsed} {item.unit}</strong>
+                                ⚡ අද නිකුත් කර ඇත: <strong>{item.unit || 'Units'} {todayUsed}</strong>
                               </div>
                             )}
                           </td>
-                          <td style={{ padding: '16px 12px', fontWeight: 'bold', color: isLow ? '#b91c1c' : '#2c221e', verticalAlign: 'middle' }}>
-                            {qty}
-                          </td>
+                          
                           <td style={{ padding: '16px 12px', color: '#5c4a42', verticalAlign: 'middle' }}>
                             {item.unit || 'Units'}
                           </td>
+
+                          <td style={{ padding: '16px 12px', fontWeight: 'bold', color: isLow ? '#b91c1c' : '#2c221e', verticalAlign: 'middle' }}>
+                            {currentQty}
+                          </td>
+
                           <td style={{ padding: '16px 12px', verticalAlign: 'middle' }}>
                             <span style={{ 
                               padding: '5px 12px', 
@@ -412,7 +424,7 @@ export default function PharmacyInventory() {
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>අවම තොග මට්ටම (අනතුරු ඇඟවීම සඳහා)</label>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block' }}>අවම තොග මට්ටම (අනතුරු ඇඟවීම සඳහා)</label>
                 <input 
                   type="number" 
                   value={minLevel} 

@@ -27,7 +27,7 @@
 
 /* Sidebar Styles */
 .admin-page-scope .admin-sidebar {
-  width: 270px;
+  width: var(--counter-sidebar-width);
   background-color: #0b4d3c;
   color: #ffffff;
   display: flex;

@@ -64,4 +64,4 @@ const QueueManagement = () => {
   );
 };
 
-export default QueueManagement;
+export default QueueManagement;  

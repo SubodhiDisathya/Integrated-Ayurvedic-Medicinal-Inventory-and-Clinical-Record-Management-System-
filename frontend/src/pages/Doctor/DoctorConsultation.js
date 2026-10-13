@@ -24,29 +24,21 @@ import cornerLeaves from '../../assets/corner-leaves.png';
 
 // Dropdown options
 const DISEASE_OPTIONS = [
-  'ප්‍රතිශ්‍යාව / උණ (Cold / Fever)',
-  'කැස්ස සහ ඇදුම (Cough / Asthma)',
-  'ආමාශයික තත්ත්ව / අජීර්ණය (Gastritis / Indigestion)',
-  'සන්ධි වේදනා / වාත රෝග (Joint Pain / Arthritis)',
-  'ලේ අඩුවීම / පාණ්ඩු (Anemia)',
-  'චර්ම රෝග (Skin Diseases)',
-  'ශීර්ෂ රෝග / හිසරදය (Headache / Migraine)',
-  'ප්‍රමේහ / දියවැඩියාව (Diabetes)',
-  'උසස් රුධිර පීඩනය (Hypertension)',
-  'කායික දුබලතාවය (General Weakness)'
+  'මලබද්ධය / අජීර්ණය (Constipation / Indigestion)',
+  'ස්නායු දුබලතා සහ මානසික ආතතිය (Nervous System Disorders / and Stress Relief)',
+  'මාංශ පේශි වේදනා / සන්ධි වේදනා / හිසරදය සහ සෙම්ප්‍රතිශ්‍යාව (Muscle Aches / Joint Pain / Headache / and Common Cold)',
+  'උණ / සෙම්ප්‍රතිශ්‍යාව / උදරයේ කැක්කුම සහ බඩ පිපීම (Fever / Common Cold / Abdominal Colic / and Flatulence)',
+  'අධික කැස්ස / පීනස / සෙම් රෝග සහ ශ්වසන අපහසුතා (Severe Cough / Catarrh / Phlegm-related Disorders / and Respiratory Issues)',
+  'මලබද්ධය / අර්ශස් රෝගී අපහසුතා සහ ශරීරය අභ්‍යන්තරයෙන් පිරිසිදු කිරීම(Constipation, Piles/Hemorrhoids discomfort / and Body Detoxification)',
 ];
 
 const MEDICINE_NAMES = [
-  'පස්පංගුව',
-  'සීතෝපලාදී චූර්ණය',
-  'හිංග්වාෂ්ටක චූර්ණය',
-  'මහානාරායන තෛලය',
-  'ත්‍රිඵලා ගුග්ගුලු',
-  'චන්දනාසවය',
-  'දශමූලාරිෂ්ටය',
-  'සුදර්ශන චූර්ණය',
-  'පිණ්ඩ තෛලය',
-  'කාසහර ක්වාථය'
+  'ත්‍රිඵලා පෙති',
+  'සරස්වතාරිෂ්ටය',
+  'ජීවලේප ආලේපනය',
+  'බුද්ධරාජ කල්ක',
+  'කොලසැලෙස්මා තෛලය',
+  'අරළු පෙති'
 ];
 
 const DOSAGE_OPTIONS = [

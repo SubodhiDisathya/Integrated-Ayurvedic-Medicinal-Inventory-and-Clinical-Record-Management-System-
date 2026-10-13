@@ -1,0 +1,284 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+.ls-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background-color: #f4f7f5;
+  font-family: 'Poppins', sans-serif;
+  overflow: hidden;
+}
+
+.ls-main-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* Topbar */
+.ls-topbar {
+  background: #ffffff;
+  padding: 12px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ls-search-bar {
+  display: flex;
+  align-items: center;
+  background: #f1f5f9;
+  padding: 8px 16px;
+  border-radius: 20px;
+  width: 320px;
+  gap: 10px;
+}
+
+.ls-search-bar input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 13px;
+}
+
+.ls-user-profile {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.ls-nav-bell {
+  position: relative;
+  font-size: 18px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.ls-badge-count {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 50%;
+  font-weight: bold;
+}
+
+.ls-user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+/* Body Layout */
+.ls-body-content {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  padding: 24px 28px;
+}
+
+.ls-title-area h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.ls-title-area p {
+  font-size: 13px;
+  color: #64748b;
+  margin: 4px 0 16px 0;
+}
+
+/* Stat Cards */
+.ls-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.ls-stat-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  border: 1px solid #e2e8f0;
+}
+
+.ls-stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.ls-stat-icon.green { background: #dcfce7; color: #16a34a; }
+.ls-stat-icon.yellow { background: #fef9c3; color: #ca8a04; }
+.ls-stat-icon.red { background: #fee2e2; color: #dc2626; }
+.ls-stat-icon.blue { background: #e0f2fe; color: #0284c7; }
+
+.ls-stat-title { font-size: 11px; color: #64748b; }
+.ls-stat-val { font-size: 20px; font-weight: 700; margin: 2px 0 0 0; }
+
+/* Table */
+.ls-table-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  border: 1px solid #e2e8f0;
+}
+
+.ls-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ls-table th {
+  text-align: left;
+  padding: 12px;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ls-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.ls-subtext { font-size: 11px; color: #94a3b8; }
+.ls-ingredients-td { font-size: 12px; color: #334155; line-height: 1.4; }
+
+.ls-status-pill {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ls-status-pill.ok { background: #fef3c7; color: #d97706; }
+.ls-status-pill.low { background: #fee2e2; color: #dc2626; }
+
+.ls-tag-low {
+  display: block;
+  font-size: 10px;
+  color: #dc2626;
+  font-weight: bold;
+}
+
+.ls-btn-action {
+  background: #f1f5f9;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Right Side Alerts Panel */
+.ls-right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ls-alert-card, .ls-quick-actions-card, .ls-notifications-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+
+.ls-alert-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.ls-alert-header h3 { font-size: 15px; margin: 0; font-weight: 700; }
+.ls-alert-badge {
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: bold;
+}
+
+.ls-alert-item {
+  background: #fffdf5;
+  border: 1px solid #fef08a;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.ls-alert-item-title { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
+
+/* Quick Action Buttons */
+.ls-btn-green {
+  width: 100%;
+  background: #123e26;
+  color: #fff;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.ls-btn-outline {
+  width: 100%;
+  background: #fff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+/* Notifications */
+.ls-notif-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0 0;
+  font-size: 12px;
+}
+
+.ls-notif-list li {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; }
+.dot.red { background: #ef4444; }
+.dot.yellow { background: #f59e0b; }

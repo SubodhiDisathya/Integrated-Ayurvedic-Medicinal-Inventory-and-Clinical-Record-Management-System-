@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 
-import logoAyurveda from '../assets/logo-top.png';
+// නිවැරදි ෆෝල්ඩර මාර්ගය (Path) යොදා Sidebar එක ඉම්පෝට් කිරීම[cite: 6]
+import SidebarTicket from '../components/Sidebar_ticket'; 
+
 import bannerHero from '../assets/banner-hero.jpeg';
-import cornerLeaves from '../assets/corner-leaves.png';
 
 export default function TicketCounter() {
   const navigate = useNavigate();
@@ -75,38 +76,8 @@ export default function TicketCounter() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f7f2e7', width: '100vw', overflowX: 'hidden', fontFamily: 'sans-serif' }}>
       
-      {/* --- Sidebar --- */}
-      <aside style={{ width: '280px', backgroundColor: '#0f3d27', color: '#ffffff', display: 'flex', flexDirection: 'column', position: 'sticky', top: 0, height: '100vh', flexShrink: 0, boxShadow: '4px 0 10px rgba(0,0,0,0.1)', zIndex: 100 }}>
-        
-        <div style={{ padding: '30px 20px 20px 20px', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
-          <img src={logoAyurveda} alt="Logo" style={{ width: '65px', height: '65px', objectFit: 'contain', marginBottom: '10px', borderRadius: '50%', padding: '5px', background: 'rgba(255,255,255,0.1)', border: '1.5px solid rgba(132, 227, 163, 0.6)' }} />
-          <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#ffffff', margin: 0 }}>ජාතික ආයුර්වේද</h2>
-          <p style={{ fontSize: '0.72rem', color: '#dfe8db', margin: '4px 0 6px 0', lineHeight: '1.3' }}>ඖෂධ තොග හා රෝගීන් සත්කාරක කළමනාකරණය</p>
-          <span style={{ fontSize: '0.65rem', letterSpacing: '1.5px', color: '#84e3a3', fontWeight: '700' }}>MANAGEMENT SYSTEM</span>
-        </div>
-
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '20px 12px' }}>
-          <button onClick={() => navigate('/ticket-counter')} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 18px', background: 'rgba(0,0,0,0.3)', border: 'none', borderLeft: '4px solid #84e3a3', color: '#ffffff', fontSize: '0.92rem', fontWeight: '600', cursor: 'pointer', textAlign: 'left', borderRadius: '10px', width: '100%' }}>
-            <i className="bi bi-house-door-fill" style={{ fontSize: '1.1rem', color: '#84e3a3' }}></i> මුල් පිටුව
-          </button>
-          
-          <button onClick={() => navigate('/ticket-counter/register-patient')} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 18px', background: 'transparent', border: 'none', color: '#eef2e8', fontSize: '0.92rem', fontWeight: '600', cursor: 'pointer', textAlign: 'left', borderRadius: '10px', width: '100%' }}>
-            <i className="bi bi-person-plus" style={{ fontSize: '1.1rem', color: '#84e3a3' }}></i> රෝගී ලියාපදිංචිය
-          </button>
-
-          <button onClick={() => navigate('/ticket-counter/records')} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 18px', background: 'transparent', border: 'none', color: '#eef2e8', fontSize: '0.92rem', fontWeight: '600', cursor: 'pointer', textAlign: 'left', borderRadius: '10px', width: '100%' }}>
-            <i className="bi bi-file-earmark-text" style={{ fontSize: '1.1rem', color: '#84e3a3' }}></i> රෝගී වාර්තා
-          </button>
-        </nav>
-
-        <div style={{ marginTop: 'auto', padding: '20px', textAlign: 'center' }}>
-          <img src={cornerLeaves} alt="" style={{ width: '110px', opacity: 0.15 }} />
-        </div>
-
-        <button onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 20px', margin: '0 12px 20px 12px', background: 'transparent', border: 'none', borderTop: '1px solid rgba(255,255,255,0.1)', color: '#fca5a5', fontSize: '0.92rem', fontWeight: '600', cursor: 'pointer', borderRadius: '8px' }}>
-          <i className="bi bi-box-arrow-left"></i> පිටවීම
-        </button>
-      </aside>
+      {/* --- Sidebar Component --- */}
+      <SidebarTicket />
 
       {/* --- Main Content Area --- */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflowY: 'auto' }}>
@@ -130,7 +101,7 @@ export default function TicketCounter() {
 
         <div style={{ padding: '28px 32px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
           
-          {/* Hero Banner with Gradient Overlay */}
+          {/* Hero Banner */}
           <div style={{ position: 'relative', width: '100%', height: '260px', borderRadius: '16px', overflow: 'hidden', marginBottom: '25px', boxShadow: '0 4px 15px rgba(0,0,0,0.08)' }}>
             <img src={bannerHero} alt="Banner" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 25%', display: 'block' }} />
             <div style={{ position: 'absolute', top: 0, left: 0, width: '65%', height: '100%', background: 'linear-gradient(90deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.82) 70%, rgba(255,255,255,0) 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingLeft: '35px' }}>
@@ -164,10 +135,10 @@ export default function TicketCounter() {
             <div style={{ background: '#fffdf9', borderRadius: '12px', padding: '24px', border: '1px solid #e4ddc9' }}>
               <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: '#0f3d27', margin: '0 0 20px 0' }}><span style={{ color: '#c78a3d', fontWeight: '900' }}>|</span> ඉක්මන් මෙනුව</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <button onClick={() => navigate('/ticket-counter/register-patient')} style={{ width: '100%', padding: '13px 18px', borderRadius: '10px', border: 'none', background: '#0f3d27', color: '#ffffff', fontSize: '0.92rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button onClick={() => navigate('/ticket/patients-today')} style={{ width: '100%', padding: '13px 18px', borderRadius: '10px', border: 'none', background: '#0f3d27', color: '#ffffff', fontSize: '0.92rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <i className="bi bi-person-plus"></i> නව රෝගී ලියාපදිංචිය
                 </button>
-                <button onClick={() => navigate('/ticket-counter/records')} style={{ width: '100%', padding: '13px 18px', borderRadius: '10px', border: '1px solid #e4ddc9', background: '#e5eedb', color: '#0f3d27', fontSize: '0.92rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button onClick={() => navigate('/ticket/history')} style={{ width: '100%', padding: '13px 18px', borderRadius: '10px', border: '1px solid #e4ddc9', background: '#e5eedb', color: '#0f3d27', fontSize: '0.92rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <i className="bi bi-search"></i> රෝගී වාර්තා සොයන්න
                 </button>
               </div>

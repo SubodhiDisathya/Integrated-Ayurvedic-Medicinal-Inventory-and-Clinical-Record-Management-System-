@@ -7,6 +7,21 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+:root {
+  --counter-sidebar-width: 280px;
+}
+
+.sidebar,
+.doctor-sidebar,
+.admin-sidebar,
+.th-sidebar {
+  box-sizing: border-box;
+  width: min(var(--counter-sidebar-width), 100vw) !important;
+  min-width: min(var(--counter-sidebar-width), 100vw) !important;
+  max-width: min(var(--counter-sidebar-width), 100vw) !important;
+  flex-shrink: 0 !important;
+}
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;

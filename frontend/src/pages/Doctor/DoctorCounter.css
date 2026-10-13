@@ -12,7 +12,8 @@
    Sidebar Styles (Dark Green Theme)
    ========================================================================== */
 .doctor-sidebar {
-  width: 280px;
+  width: var(--counter-sidebar-width);
+  flex-shrink: 0;
   background-color: #0b4d3c; /* Dark Herbal Green */
   color: #ffffff;
   display: flex;

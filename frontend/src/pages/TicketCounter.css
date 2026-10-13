@@ -51,7 +51,7 @@ body {
 
 /* Sidebar Styles */
 .sidebar {
-  width: 272px;
+  width: var(--counter-sidebar-width);
   background-color: var(--forest-950);
   color: #ffffff;
   display: flex;

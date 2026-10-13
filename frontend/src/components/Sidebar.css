@@ -1,0 +1,232 @@
+.ayur-sidebar {
+  --sidebar-green: #1a5a38;
+  --sidebar-light-green: #c6f6d5;
+  --sidebar-active: rgba(255, 255, 255, 0.15);
+
+  position: relative;
+  display: flex;
+  flex: 0 0 280px;
+  flex-direction: column;
+  width: 280px;
+  min-height: 100vh;
+  padding: 28px 18px 22px;
+  overflow: hidden;
+  color: #fff;
+  background: var(--sidebar-green);
+  box-sizing: border-box;
+  font-family: 'Poppins', 'Noto Sans Sinhala', 'Iskoola Pota', sans-serif;
+}
+
+.ayur-sidebar *,
+.ayur-sidebar *::before,
+.ayur-sidebar *::after {
+  box-sizing: inherit;
+}
+
+.ayur-sidebar-brand {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0 4px 25px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.ayur-sidebar-emblem {
+  display: block;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.ayur-sidebar-brand-copy {
+  min-width: 0;
+}
+
+.ayur-sidebar-brand-copy h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.ayur-sidebar-brand-copy p {
+  margin: 3px 0 10px;
+  color: var(--sidebar-light-green);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ayur-sidebar-tag {
+  display: inline-block;
+  padding: 4px 8px;
+  border: 1px solid rgba(198, 246, 213, 0.35);
+  border-radius: 999px;
+  color: var(--sidebar-light-green);
+  font-family: 'Poppins', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  line-height: 1.3;
+}
+
+.ayur-sidebar-nav {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 24px;
+}
+
+.ayur-sidebar-link,
+.ayur-sidebar-logout {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 13px;
+  border: 0;
+  border-radius: 9px;
+  color: rgba(255, 255, 255, 0.88);
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.ayur-sidebar-link .bi,
+.ayur-sidebar-logout .bi {
+  flex: 0 0 20px;
+  width: 20px;
+  font-size: 18px;
+  line-height: 1;
+  text-align: center;
+}
+
+.ayur-sidebar-link:hover,
+.ayur-sidebar-logout:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.ayur-sidebar-link:focus-visible,
+.ayur-sidebar-logout:focus-visible {
+  outline: 2px solid var(--sidebar-light-green);
+  outline-offset: 2px;
+}
+
+.ayur-sidebar-link.is-active {
+  color: #fff;
+  background: var(--sidebar-active);
+  box-shadow: inset 3px 0 0 var(--sidebar-light-green);
+}
+
+.ayur-sidebar-link.is-active .bi {
+  color: var(--sidebar-light-green);
+}
+
+.ayur-sidebar-footer {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  padding-top: 20px;
+}
+
+.ayur-sidebar-logout {
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0;
+  padding: 17px 13px 8px;
+  color: #fff;
+}
+
+.ayur-sidebar-logout:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 9px;
+}
+
+.ayur-sidebar-leaves {
+  position: absolute;
+  right: -16px;
+  bottom: -22px;
+  z-index: 0;
+  width: 158px;
+  max-height: 190px;
+  object-fit: contain;
+  object-position: bottom right;
+  opacity: 0.58;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .ayur-sidebar {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: auto;
+    padding: 20px 16px 16px;
+  }
+
+  .ayur-sidebar-brand {
+    padding-bottom: 18px;
+  }
+
+  .ayur-sidebar-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding-top: 16px;
+  }
+
+  .ayur-sidebar-link {
+    min-height: 44px;
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+
+  .ayur-sidebar-footer {
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  .ayur-sidebar-logout {
+    width: auto;
+    min-height: 42px;
+    padding: 10px 12px;
+    border-top: 0;
+  }
+
+  .ayur-sidebar-leaves {
+    width: 115px;
+    max-height: 130px;
+  }
+}
+
+@media (max-width: 420px) {
+  .ayur-sidebar-brand-copy h1 {
+    font-size: 16px;
+  }
+
+  .ayur-sidebar-brand-copy p {
+    font-size: 11px;
+  }
+
+  .ayur-sidebar-nav {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ayur-sidebar-link,
+  .ayur-sidebar-logout {
+    transition: none;
+  }
+}
