@@ -5,12 +5,13 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../../firebase/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 
+// Component Import
+import SidebarPhar from '../../components/Sidebar_phar';
+
 // CSS File Import
 import './PharmacyDashboard.css';
 
 // Asset Imports
-import logoEmblem from '../../assets/logo-top.png';
-import cornerLeaves from '../../assets/corner-leaves.png';
 import heroBanner from '../../assets/Medicine.jpg';
 
 export default function PharmacyDashboard() {
@@ -57,41 +58,8 @@ export default function PharmacyDashboard() {
 
   return (
     <div className="doctor-container">
-      {/* --- Left Sidebar Navigation --- */}
-      <aside className="doctor-sidebar">
-        <div className="sidebar-brand">
-          <img src={logoEmblem} alt="Sri Lanka Emblem" className="brand-logo" />
-          <h2 className="brand-title">ජාතික ආයුර්වේද</h2>
-          <p className="brand-subtitle">ඖෂධ තොග හා රෝගීන් සත්කාරක කළමනාකරණය</p>
-          <span className="brand-tag">MANAGEMENT SYSTEM</span>
-        </div>
-
-        <nav className="sidebar-menu" aria-label="ෆාමසි මෙනුව">
-          <button className="menu-item active" onClick={() => navigate('/pharmacy/dashboard')}>
-            <i className="bi bi-house-door-fill"></i> මුල් පිටුව
-          </button>
-
-          <button className="menu-item" onClick={() => navigate('/pharmacy/inventory')}>
-            <i className="bi bi-box-seam"></i> ඖෂධ ඉන්වෙන්ටරිය
-          </button>
-
-          <button className="menu-item" onClick={() => navigate('/pharmacy/alerts')}>
-            <i className="bi bi-exclamation-triangle-fill" style={{ color: '#fbbf24' }}></i> අඩු තොග අනතුරු ඇඟවීම්
-          </button>
-
-          <button className="menu-item" onClick={() => navigate('/pharmacy/issue')}>
-            <i className="bi bi-arrow-up-right-square-fill"></i> ඖෂධ නිකුත් කිරීම
-          </button>
-        </nav>
-
-        <div className="sidebar-footer-bg">
-          <img src={cornerLeaves} alt="Decor Leaves" className="leaf-decor" />
-        </div>
-
-        <button className="logout-btn" onClick={() => navigate('/')}>
-          <i className="bi bi-box-arrow-left"></i> පිටවීම
-        </button>
-      </aside>
+      {/* --- Left Sidebar Navigation (Modular Component) --- */}
+      <SidebarPhar />
 
       {/* --- Main Content Area --- */}
       <main className="doctor-main">
@@ -113,7 +81,7 @@ export default function PharmacyDashboard() {
         </header>
 
         <div className="content-inner">
-          {/* --- Wide Hero Banner Section (Matching Doctor UI Exactly) --- */}
+          {/* --- Wide Hero Banner Section --- */}
           <div className="hero-banner-container">
             <img src={heroBanner} alt="Ayurveda Banner" className="hero-banner-img" />
             <div className="hero-overlay-card">
@@ -123,7 +91,7 @@ export default function PharmacyDashboard() {
             </div>
           </div>
 
-          {/* Stats Cards Section (Matching Doctor UI Grid) */}
+          {/* Stats Cards Section */}
           <section className="stats-grid-doctor">
             <div className="stat-card">
               <div className="stat-number">{stats.totalItems || 8}</div>
@@ -144,7 +112,6 @@ export default function PharmacyDashboard() {
 
           {/* Lower Grid (Quick Actions & Summary) */}
           <section className="lower-grid-doctor">
-            {/* Quick Actions */}
             <div className="card-box quick-actions-box">
               <h3><span className="bar-icon">|</span> ඉක්මන් ක්‍රියා</h3>
               <div className="actions-list">
@@ -164,7 +131,6 @@ export default function PharmacyDashboard() {
               </div>
             </div>
 
-            {/* Inventory Summary */}
             <div className="card-box summary-box">
               <h3><span className="bar-icon">|</span> ඉන්වෙන්ටරි සාරාංශය</h3>
               <ul className="summary-items">

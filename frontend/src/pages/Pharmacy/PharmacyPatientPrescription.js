@@ -3,14 +3,57 @@ import { useNavigate } from 'react-router-dom';
 
 // Firebase Imports
 import { db } from '../../firebase/firebase';
-import { collection, onSnapshot, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
+
+// Component Import
+import SidebarPhar from '../../components/Sidebar_phar';
 
 // CSS Import
 import './PharmacyDashboard.css';
 
-// Asset Imports
-import logoEmblem from '../../assets/logo-top.png';
-import cornerLeaves from '../../assets/corner-leaves.png';
+// 🧮 Precise Universal Calculation Helper Function
+export const calculateTotalQuantity = (med) => {
+  if (!med) return 0;
+  if (med.totalQty !== undefined && !isNaN(Number(med.totalQty)) && Number(med.totalQty) > 0) {
+    return Number(med.totalQty);
+  }
+  if (med.quantity !== undefined && !isNaN(Number(med.quantity)) && Number(med.quantity) > 0) {
+    return Number(med.quantity);
+  }
+
+  const dosageStr = String(med.dosage || med.dosageOption || '').toLowerCase();
+  const durationStr = String(med.duration || med.days || '').toLowerCase();
+
+  // 1. Extract Days safely
+  let days = 1;
+  const durationMatches = durationStr.match(/\d+/);
+  if (durationMatches) {
+    days = Number(durationMatches[0]) || 1;
+  }
+  if (durationStr.includes('සති') || durationStr.includes('week')) {
+    days = days * 7;
+  }
+
+  // 2. Extract Per-Dose quantity safely
+  let perDose = 1;
+  const dosageMatches = dosageStr.match(/\d+/g);
+  if (dosageMatches && dosageMatches.length > 0) {
+    perDose = Number(dosageMatches[0]) || 1;
+  }
+
+  // 3. Extract Frequency (Times per day)
+  let timesPerDay = 1;
+  if (dosageStr.includes('දිනකට 3') || dosageStr.includes('3 වරක්') || dosageStr.includes('3 times')) {
+    timesPerDay = 3;
+  } else if (dosageStr.includes('උදේ සවස') || dosageStr.includes('උදේ/සවස') || dosageStr.includes('දිනකට 2') || dosageStr.includes('2 වරක්')) {
+    timesPerDay = 2;
+  } else if (dosageStr.includes('දිනකට 4') || dosageStr.includes('4 වරක්')) {
+    timesPerDay = 4;
+  }
+
+  const total = perDose * timesPerDay * days;
+  return isNaN(total) || total <= 0 ? 1 : total;
+};
 
 export default function PharmacyPatientPrescription() {
   const navigate = useNavigate();
@@ -19,7 +62,6 @@ export default function PharmacyPatientPrescription() {
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   useEffect(() => {
-    // Pending තත්ත්වයේ ඇති සියලුම වට්ටෝරු ලබා ගැනීම
     const q = query(
       collection(db, 'pharmacy_prescriptions'), 
       where('status', '==', 'Pending')
@@ -33,7 +75,6 @@ export default function PharmacyPatientPrescription() {
         const data = docSnap.data();
         let prescriptionDate = null;
 
-        // Firestore Timestamp එක JavaScript Date එකකට හැරවීම
         if (data.createdAt) {
           if (typeof data.createdAt.toDate === 'function') {
             prescriptionDate = data.createdAt.toDate();
@@ -42,7 +83,6 @@ export default function PharmacyPatientPrescription() {
           }
         }
 
-        // වට්ටෝරුව සාදා ඇති දිනය අද දිනට (Year, Month, Date) සමාන දැයි පරීක්ෂා කිරීම
         if (prescriptionDate) {
           const isToday = 
             prescriptionDate.getDate() === today.getDate() &&
@@ -80,20 +120,45 @@ export default function PharmacyPatientPrescription() {
       });
     } catch (error) {
       console.error("Error updating medicine status: ", error);
-      alert('බෙහෙත් තත්ත්වය යාවත්කාලීන කිරීමේදී දෝෂයක් ඇති විය.');
+      alert('Error updating medicine status.');
     }
   };
 
   const handleCompletePrescription = async (prescriptionId) => {
     try {
+      const prescriptionToIssue = prescriptions.find(p => p.id === prescriptionId);
+      
+      if (prescriptionToIssue && prescriptionToIssue.medicines) {
+        const invSnapshot = await getDocs(collection(db, 'inventory'));
+        
+        for (const med of prescriptionToIssue.medicines) {
+          const medNameTrimmed = med.name?.trim();
+          const issuedQty = calculateTotalQuantity(med);
+
+          invSnapshot.forEach(async (invDoc) => {
+            const invData = invDoc.data();
+            if (invData.name?.trim() === medNameTrimmed) {
+              const currentStock = Number(invData.quantity || 0);
+              const updatedStock = Math.max(0, currentStock - issuedQty);
+
+              const invRef = doc(db, 'inventory', invDoc.id);
+              await updateDoc(invRef, {
+                quantity: updatedStock
+              });
+            }
+          });
+        }
+      }
+
       const prescriptionRef = doc(db, 'pharmacy_prescriptions', prescriptionId);
       await updateDoc(prescriptionRef, {
         status: 'Completed'
       });
-      alert('රෝගියාට ඖෂධ සාර්ථකව නිකුත් කර අවසන් කරන ලදී!');
+
+      alert('Medicines successfully issued and inventory updated!');
     } catch (error) {
       console.error("Error updating prescription status: ", error);
-      alert('වට්ටෝරුව අවසන් කිරීමේදී දෝෂයක් ඇති විය.');
+      alert('Error completing prescription.');
     }
   };
 
@@ -106,52 +171,22 @@ export default function PharmacyPatientPrescription() {
 
   return (
     <div className="doctor-container">
-      <aside className="doctor-sidebar">
-        <div className="sidebar-brand">
-          <img src={logoEmblem} alt="Sri Lanka Emblem" className="brand-logo" />
-          <h2 className="brand-title">ජාතික ආයුර්වේද</h2>
-          <p className="brand-subtitle">ඖෂධ තොග හා රෝගීන් සත්කාරක කළමනාකරණය</p>
-          <span className="brand-tag">MANAGEMENT SYSTEM</span>
-        </div>
-
-        <nav className="sidebar-menu">
-          <button className="menu-item" onClick={() => navigate('/pharmacy/dashboard')}>
-            <i className="bi bi-house-door-fill"></i> මුල් පිටුව
-          </button>
-          <button className="menu-item" onClick={() => navigate('/pharmacy/inventory')}>
-            <i className="bi bi-box-seam"></i> ඖෂධ ඉන්වෙන්ටරිය
-          </button>
-          <button className="menu-item" onClick={() => navigate('/pharmacy/alerts')}>
-            <i className="bi bi-exclamation-triangle-fill" style={{ color: '#fbbf24' }}></i> අඩු තොග අනතුරු ඇඟවීම්
-          </button>
-          <button className="menu-item active" onClick={() => navigate('/pharmacy/issue')}>
-            <i className="bi bi-file-medical-fill"></i> ඖෂධ නිකුත් කිරීම
-          </button>
-        </nav>
-
-        <div className="sidebar-footer-bg">
-          <img src={cornerLeaves} alt="Decor Leaves" className="leaf-decor" />
-        </div>
-
-        <button className="logout-btn" onClick={() => navigate('/')}>
-          <i className="bi bi-box-arrow-left"></i> පිටවීම
-        </button>
-      </aside>
+      <SidebarPhar />
 
       <main className="doctor-main">
         <header className="top-bar">
           <div className="welcome-msg">
-            <span className="leaf-icon">🍃</span> රෝගී ඖෂධ නිකුත් කිරීමේ අංශය (Pharmacy Dispensing Dashboard)
+            <span className="leaf-icon">🍃</span> Pharmacy Dispensing Dashboard
           </div>
           <button className="back-btn" onClick={() => navigate('/pharmacy/dashboard')}>
-            ⬅ උපකරණ පුවරුවට
+            ⬅ Back to Dashboard
           </button>
         </header>
 
         <div className="content-inner">
           <div className="card-box" style={{ width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
-              <h3><span className="bar-icon">|</span> නිකුත් කළ යුතු රෝගී වට්ටෝරු ලැයිස්තුව (අද දිනට පමණි)</h3>
+              <h3><span className="bar-icon">|</span> Pending Prescriptions (Today Only)</h3>
               
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {categories.map((cat, idx) => (
@@ -170,14 +205,14 @@ export default function PharmacyPatientPrescription() {
                       transition: 'all 0.3s ease'
                     }}
                   >
-                    {cat === 'All' ? 'සියලුම (All)' : cat}
+                    {cat === 'All' ? 'All' : cat}
                   </button>
                 ))}
               </div>
             </div>
 
             {loading ? (
-              <p className="loading-text">දත්ත ලබාගනිමින් පවතී...</p>
+              <p className="loading-text">Loading data...</p>
             ) : filteredPrescriptions.length > 0 ? (
               <div className="prescription-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
                 {filteredPrescriptions.map((item) => {
@@ -198,7 +233,7 @@ export default function PharmacyPatientPrescription() {
                         </div>
                         <hr className="divider" style={{ border: '0', borderTop: '1px solid #eee', margin: '12px 0' }} />
 
-                        <p className="med-list-title" style={{ fontSize: '13px', fontWeight: 'bold', color: '#2d3748', marginBottom: '8px' }}>🌿 නියමිත ඖෂධ සහ මාත්‍රා:</p>
+                        <p className="med-list-title" style={{ fontSize: '13px', fontWeight: 'bold', color: '#2d3748', marginBottom: '8px' }}>🌿 Prescribed Medicines & Dosages:</p>
                         <ul className="med-items" style={{ listStyle: 'none', padding: 0, margin: '0 0 15px 0' }}>
                           {medicines.map((med, idx) => (
                             <li key={idx} style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', background: '#fafaf9', padding: '8px 10px', borderRadius: '6px', border: '1px solid #f0f0f0' }}>
@@ -235,14 +270,14 @@ export default function PharmacyPatientPrescription() {
                           transition: 'background 0.3s ease'
                         }}
                       >
-                        {allChecked ? '✅ ඖෂධ නිකුත් කර අවසන් කරන්න' : '⏳ සියලුම බෙහෙත් තෝරන්න'}
+                        {allChecked ? '✅ Complete Issuing' : '⏳ Select All Medicines'}
                       </button>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>අද දිනට නිකුත් කළ යුතු වට්ටෝරු නොමැත.</p>
+              <p style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>No prescriptions to issue today.</p>
             )}
           </div>
         </div>

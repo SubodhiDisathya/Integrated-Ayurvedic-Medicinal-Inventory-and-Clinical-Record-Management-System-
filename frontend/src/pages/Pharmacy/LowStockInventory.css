@@ -167,7 +167,6 @@
   vertical-align: middle;
 }
 
-.ls-subtext { font-size: 11px; color: #94a3b8; }
 .ls-ingredients-td { font-size: 12px; color: #334155; line-height: 1.4; }
 
 .ls-status-pill {
@@ -187,14 +186,6 @@
   font-weight: bold;
 }
 
-.ls-btn-action {
-  background: #f1f5f9;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
 /* Right Side Alerts Panel */
 .ls-right-panel {
   display: flex;
@@ -203,6 +194,7 @@
 }
 
 .ls-alert-card, .ls-quick-actions-card, .ls-notifications-card {
+  grid-row: auto;
   background: #ffffff;
   border-radius: 12px;
   padding: 18px;
