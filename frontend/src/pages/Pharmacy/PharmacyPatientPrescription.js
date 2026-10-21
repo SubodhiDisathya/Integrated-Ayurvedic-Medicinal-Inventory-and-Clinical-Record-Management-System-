@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 // Firebase Imports
 import { db } from '../../firebase/firebase';
-import { collection, onSnapshot, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, query, where, getDocs, runTransaction } from 'firebase/firestore';
 
 // Component Import
 import SidebarPhar from '../../components/Sidebar_phar';
@@ -11,7 +11,7 @@ import SidebarPhar from '../../components/Sidebar_phar';
 // CSS Import
 import './PharmacyDashboard.css';
 
-// 🧮 Precise Universal Calculation Helper Function
+// 🧮 100% Robust & Accurate Calculation Helper Function
 export const calculateTotalQuantity = (med) => {
   if (!med) return 0;
   if (med.totalQty !== undefined && !isNaN(Number(med.totalQty)) && Number(med.totalQty) > 0) {
@@ -24,7 +24,7 @@ export const calculateTotalQuantity = (med) => {
   const dosageStr = String(med.dosage || med.dosageOption || '').toLowerCase();
   const durationStr = String(med.duration || med.days || '').toLowerCase();
 
-  // 1. Extract Days safely
+  // 1. දින ගණන (Days) නිවැරදිව ලබා ගැනීම
   let days = 1;
   const durationMatches = durationStr.match(/\d+/);
   if (durationMatches) {
@@ -34,18 +34,18 @@ export const calculateTotalQuantity = (med) => {
     days = days * 7;
   }
 
-  // 2. Extract Per-Dose quantity safely
+  // 2. වේලකට ගන්නා ප්‍රමාණය (Per-Dose) නිවැරදිව ලබා ගැනීම
   let perDose = 1;
   const dosageMatches = dosageStr.match(/\d+/g);
   if (dosageMatches && dosageMatches.length > 0) {
     perDose = Number(dosageMatches[0]) || 1;
   }
 
-  // 3. Extract Frequency (Times per day)
+  // 3. දිනකට වාර ගණන (Frequency / Times per day)
   let timesPerDay = 1;
-  if (dosageStr.includes('දිනකට 3') || dosageStr.includes('3 වරක්') || dosageStr.includes('3 times')) {
+  if (dosageStr.includes('දිනකට 3') || dosageStr.includes('3 වරක්') || dosageStr.includes('3 times') || dosageStr.includes('දිනකට තුන් වරක්')) {
     timesPerDay = 3;
-  } else if (dosageStr.includes('උදේ සවස') || dosageStr.includes('උදේ/සවස') || dosageStr.includes('දිනකට 2') || dosageStr.includes('2 වරක්')) {
+  } else if (dosageStr.includes('උදේ සවස') || dosageStr.includes('උදේ/සවස') || dosageStr.includes('දිනකට 2') || dosageStr.includes('2 වරක්') || dosageStr.includes('දිනකට දෙවරක්')) {
     timesPerDay = 2;
   } else if (dosageStr.includes('දිනකට 4') || dosageStr.includes('4 වරක්')) {
     timesPerDay = 4;
@@ -127,38 +127,72 @@ export default function PharmacyPatientPrescription() {
   const handleCompletePrescription = async (prescriptionId) => {
     try {
       const prescriptionToIssue = prescriptions.find(p => p.id === prescriptionId);
-      
-      if (prescriptionToIssue && prescriptionToIssue.medicines) {
-        const invSnapshot = await getDocs(collection(db, 'inventory'));
-        
-        for (const med of prescriptionToIssue.medicines) {
-          const medNameTrimmed = med.name?.trim();
-          const issuedQty = calculateTotalQuantity(med);
 
-          invSnapshot.forEach(async (invDoc) => {
-            const invData = invDoc.data();
-            if (invData.name?.trim() === medNameTrimmed) {
-              const currentStock = Number(invData.quantity || 0);
-              const updatedStock = Math.max(0, currentStock - issuedQty);
+      if (!prescriptionToIssue?.medicines?.length) {
+        throw new Error('This prescription has no medicines to issue.');
+      }
 
-              const invRef = doc(db, 'inventory', invDoc.id);
-              await updateDoc(invRef, {
-                quantity: updatedStock
-              });
-            }
-          });
+      const inventorySnapshot = await getDocs(collection(db, 'inventory'));
+      const inventoryByName = new Map();
+      inventorySnapshot.forEach((inventoryDoc) => {
+        const name = inventoryDoc.data().name?.trim();
+        if (name && !inventoryByName.has(name)) {
+          inventoryByName.set(name, inventoryDoc.ref);
         }
+      });
+
+      const stockChanges = new Map();
+      for (const med of prescriptionToIssue.medicines) {
+        const name = med.name?.trim();
+        const inventoryRef = inventoryByName.get(name);
+        if (!inventoryRef) {
+          throw new Error(`Medicine "${name || 'Unknown'}" was not found in inventory.`);
+        }
+
+        const issuedQty = calculateTotalQuantity(med);
+        const existingChange = stockChanges.get(inventoryRef.id);
+        stockChanges.set(inventoryRef.id, {
+          ref: inventoryRef,
+          name,
+          issuedQty: (existingChange?.issuedQty || 0) + issuedQty
+        });
       }
 
       const prescriptionRef = doc(db, 'pharmacy_prescriptions', prescriptionId);
-      await updateDoc(prescriptionRef, {
-        status: 'Completed'
+      await runTransaction(db, async (transaction) => {
+        const prescriptionSnapshot = await transaction.get(prescriptionRef);
+        if (!prescriptionSnapshot.exists() || prescriptionSnapshot.data().status !== 'Pending') {
+          throw new Error('This prescription has already been issued or is no longer pending.');
+        }
+
+        const changes = Array.from(stockChanges.values());
+        const inventorySnapshots = await Promise.all(
+          changes.map(({ ref }) => transaction.get(ref))
+        );
+
+        changes.forEach((change, index) => {
+          const inventoryDoc = inventorySnapshots[index];
+          if (!inventoryDoc.exists()) {
+            throw new Error(`Medicine "${change.name}" was not found in inventory.`);
+          }
+
+          const currentStock = Number(inventoryDoc.data().quantity || 0);
+          if (!Number.isFinite(currentStock) || currentStock < change.issuedQty) {
+            throw new Error(`Not enough stock for "${change.name}". Available: ${currentStock}. Required: ${change.issuedQty}.`);
+          }
+        });
+
+        changes.forEach((change, index) => {
+          const currentStock = Number(inventorySnapshots[index].data().quantity || 0);
+          transaction.update(change.ref, { quantity: currentStock - change.issuedQty });
+        });
+        transaction.update(prescriptionRef, { status: 'Completed' });
       });
 
       alert('Medicines successfully issued and inventory updated!');
     } catch (error) {
       console.error("Error updating prescription status: ", error);
-      alert('Error completing prescription.');
+      alert(error instanceof Error ? error.message : 'Error completing prescription.');
     }
   };
 

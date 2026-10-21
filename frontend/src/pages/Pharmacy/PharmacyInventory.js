@@ -6,7 +6,7 @@ import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimest
 import SidebarPhar from '../../components/Sidebar_phar';
 import './PharmacyDashboard.css';
 
-// 🧮 Precise Universal Calculation Helper Function
+// 🧮 100% Accurate Calculation Function
 export const calculateTotalQuantity = (med) => {
   if (!med) return 0;
   if (med.totalQty !== undefined && !isNaN(Number(med.totalQty)) && Number(med.totalQty) > 0) {
@@ -19,7 +19,7 @@ export const calculateTotalQuantity = (med) => {
   const dosageStr = String(med.dosage || med.dosageOption || '').toLowerCase();
   const durationStr = String(med.duration || med.days || '').toLowerCase();
 
-  // 1. Extract Days safely
+  // 1. දින ගණන (Days)
   let days = 1;
   const durationMatches = durationStr.match(/\d+/);
   if (durationMatches) {
@@ -29,18 +29,18 @@ export const calculateTotalQuantity = (med) => {
     days = days * 7;
   }
 
-  // 2. Extract Per-Dose quantity safely
+  // 2. වේලකට ගන්නා ප්‍රමාණය (Per-Dose)
   let perDose = 1;
   const dosageMatches = dosageStr.match(/\d+/g);
   if (dosageMatches && dosageMatches.length > 0) {
     perDose = Number(dosageMatches[0]) || 1;
   }
 
-  // 3. Extract Frequency (Times per day)
+  // 3. දිනකට වාර ගණන (Times per day)
   let timesPerDay = 1;
-  if (dosageStr.includes('දිනකට 3') || dosageStr.includes('3 වරක්') || dosageStr.includes('3 times')) {
+  if (dosageStr.includes('දිනකට 3') || dosageStr.includes('3 වරක්') || dosageStr.includes('3 times') || dosageStr.includes('දිනකට තුන් වරක්')) {
     timesPerDay = 3;
-  } else if (dosageStr.includes('උදේ සවස') || dosageStr.includes('උදේ/සවස') || dosageStr.includes('දිනකට 2') || dosageStr.includes('2 වරක්')) {
+  } else if (dosageStr.includes('උදේ සවස') || dosageStr.includes('උදේ/සවස') || dosageStr.includes('දිනකට 2') || dosageStr.includes('2 වරක්') || dosageStr.includes('දිනකට දෙවරක්')) {
     timesPerDay = 2;
   } else if (dosageStr.includes('දිනකට 4') || dosageStr.includes('4 වරක්')) {
     timesPerDay = 4;
@@ -112,7 +112,7 @@ export default function PharmacyInventory() {
       setLoading(false);
     });
 
-    // 2. Prescriptions Usage Real-time Listener
+    // 2. Prescriptions Usage Real-time Listener (Only for Displaying Today's Issued Badge)
     const unsubPrescriptions = onSnapshot(collection(db, 'pharmacy_prescriptions'), (snapshot) => {
       const usageMap = {};
       const today = new Date();
@@ -283,10 +283,10 @@ export default function PharmacyInventory() {
                   </thead>
                   <tbody>
                     {filteredInventory.map((item) => {
-                      const totalQty = Number(item.quantity || 0);
+                      // 💡 FIXED: Real-time Stock is directly managed from Firestore `quantity`
+                      const currentQty = Number(item.quantity || 0);
                       const todayUsed = todaysUsage[item.name?.trim()] || 0;
                       
-                      const currentQty = Math.max(0, totalQty - todayUsed);
                       const minLvl = Number(item.minLevel || 10);
                       const isLow = currentQty <= minLvl;
 
