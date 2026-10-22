@@ -135,7 +135,7 @@ export default function Login() {
                 <span className="field-icon">💼</span>
                 <select name="role" required defaultValue="">
                   <option value="" disabled>ඔබේ භූමිකාව තෝරන්න/ Choose Your Role...</option>
-                  <option value="ticket">ප්‍රවේශපත්‍ර කවුන්ටරයය/ Ticket Counter</option>
+                  <option value="ticket">ප්‍රවේශපත්‍ර කවුන්ටරය/ Ticket Counter</option>
                   <option value="doctor">වෛද්‍යවරයා/ Doctor</option>
                   <option value="staff">ෆාමසිකරු / කාර්ය මණ්ඩලය/ Pharmacy Staff</option>
                   <option value="supplier">සැපයුම්කරු/ Supplier</option>

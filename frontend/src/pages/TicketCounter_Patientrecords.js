@@ -58,11 +58,22 @@ export default function PatientRecords() {
           formattedDate = 'N/A';
         }
 
+        // Gender mapping: Display 'පුරුෂ' and 'ස්ත්‍රී'
         let genderDisplay = 'වෙනත්';
-        if (data.gender === 'male' || data.gender === 'පුරුෂ' || data.gender === 'පිරිමි') {
-          genderDisplay = 'පිරිමි';
-        } else if (data.gender === 'female' || data.gender === 'ස්ත්‍රී' || data.gender === 'ගෑනු') {
-          genderDisplay = 'ගෑනු';
+        if (
+          data.gender === 'male' || 
+          data.gender === 'පුරුෂ' || 
+          data.gender === 'පිරිමි'
+        ) {
+          genderDisplay = 'පුරුෂ';
+        } else if (
+          data.gender === 'female' || 
+          data.gender === 'ස්ත්‍රී' || 
+          data.gender === 'ගෑනු' || 
+          data.gender === 'ගැහැණු' || 
+          data.gender === 'කාන්තා'
+        ) {
+          genderDisplay = 'ස්ත්‍රී';
         }
 
         patientsData.push({
@@ -93,7 +104,6 @@ export default function PatientRecords() {
     }
   };
 
-  // වෛද්‍යවරයා වෙත යවන function එක
   const handleSendToDoctor = async (patient) => {
     try {
       setSendingId(patient.id);
@@ -102,7 +112,6 @@ export default function PatientRecords() {
       const todayStr = now.toISOString().split('T')[0];
       const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // visits collection එකට 'type: returning' ලෙස save වේ
       await addDoc(collection(db, 'visits'), {
         patientDocId: patient.id,
         patientId: patient.patientId,
@@ -110,7 +119,7 @@ export default function PatientRecords() {
         age: patient.age,
         gender: patient.gender,
         contactNumber: patient.contactNumber,
-        type: 'returning', // <-- පැරණි රෝගියෙකු නිසා 'returning' ලෙස සටහන් වේ
+        type: 'returning',
         status: 'පොරොත්තුවෙන්',
         date: todayStr,
         visitDate: todayStr,
@@ -222,7 +231,7 @@ export default function PatientRecords() {
                     <th>රෝගී ID</th>
                     <th>නම</th>
                     <th>වයස</th>
-                    <th>ස්ත්‍රී/පිරිමි</th>
+                    <th>ස්ත්‍රී/පුරුෂ</th>
                     <th>දුරකථනය</th>
                     <th>අවසාන දිනය</th>
                     <th>ක්‍රියා</th>
@@ -248,7 +257,7 @@ export default function PatientRecords() {
                         <td className="patient-name">{patient.fullName}</td>
                         <td>{patient.age}</td>
                         <td>
-                          <span className={`gender-badge ${patient.gender === 'පිරිමි' ? 'male' : 'female'}`}>
+                          <span className={`gender-badge ${patient.gender === 'පුරුෂ' ? 'male' : 'female'}`}>
                             {patient.gender}
                           </span>
                         </td>

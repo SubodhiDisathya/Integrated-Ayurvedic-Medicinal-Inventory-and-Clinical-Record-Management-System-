@@ -158,7 +158,7 @@ export default function PharmacyInventory() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!medName || !quantity || !unit) {
-      alert('Please fill in all required fields.');
+      alert('කරුණාකර අවශ්‍ය සියලුම තොරතුරු පුරවන්න.');
       return;
     }
 
@@ -176,17 +176,17 @@ export default function PharmacyInventory() {
       if (isEditing) {
         const medRef = doc(db, 'inventory', currentId);
         await updateDoc(medRef, payload);
-        alert('Medicine information updated successfully!');
+        alert('ඖෂධ තොරතුරු සාර්ථකව යාවත්කාලීන කරන ලදී!');
       } else {
         payload.createdAt = serverTimestamp();
         await addDoc(collection(db, 'inventory'), payload);
-        alert('New medicine added successfully!');
+        alert('නව ඖෂධය සාර්ථකව එක් කරන ලදී!');
       }
 
       setShowModal(false);
     } catch (error) {
       console.error("Error saving medicine: ", error);
-      alert('An error occurred.');
+      alert('දෝෂයක් සිදු විය.');
     }
   };
 
@@ -215,7 +215,7 @@ export default function PharmacyInventory() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this medicine?')) {
+    if (window.confirm('මෙම ඖෂධය මකා දැමීමට ඔබට විශ්වාසද?')) {
       try {
         await deleteDoc(doc(db, 'inventory', id));
       } catch (error) {
@@ -236,14 +236,14 @@ export default function PharmacyInventory() {
       <main className="doctor-main">
         <header className="top-bar">
           <div className="welcome-msg">
-            🌿 Pharmacy Inventory Management
+            🌿 ඖෂධශාලා තොග කළමනාකරණය
           </div>
 
           <button 
             onClick={handleOpenAddModal}
             style={{ background: '#1a5a38', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            + Add New Medicine
+            + නව ඖෂධයක් එක් කරන්න
           </button>
         </header>
 
@@ -252,14 +252,14 @@ export default function PharmacyInventory() {
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '25px' }}>
               <h3 style={{ margin: 0, color: '#2c221e', fontSize: '17px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
-                <span style={{ color: '#1a5a38', fontWeight: 'bold' }}>|</span> Medicine Inventory
+                <span style={{ color: '#1a5a38', fontWeight: 'bold' }}>|</span> ඖෂධ තොගය
               </h3>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#fcfaf7', padding: '8px 15px', borderRadius: '12px', border: '1px solid #e9e2d5', width: '280px' }}>
                 <span style={{ color: '#a0aec0', fontSize: '14px' }}>🔍</span>
                 <input 
                   type="text" 
-                  placeholder="Search medicines..." 
+                  placeholder="ඖෂධ සොයන්න..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   style={{ border: 'none', outline: 'none', width: '100%', fontSize: '13px', background: 'transparent', color: '#2c221e' }}
@@ -268,17 +268,17 @@ export default function PharmacyInventory() {
             </div>
 
             {loading ? (
-              <p style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>Loading data...</p>
+              <p style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>දත්ත ලබා ගනිමින්...</p>
             ) : filteredInventory.length > 0 ? (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #f0eae1', color: '#718096', fontSize: '13px', background: '#fcfaf7' }}>
-                      <th style={{ padding: '14px 12px' }}>Medicine Name</th>
-                      <th style={{ padding: '14px 12px' }}>Unit</th>
-                      <th style={{ padding: '14px 12px' }}>Remaining Quantity</th>
-                      <th style={{ padding: '14px 12px' }}>Status</th>
-                      <th style={{ padding: '14px 12px', textAlign: 'center' }}>Actions</th>
+                      <th style={{ padding: '14px 12px' }}>ඖෂධයේ නම</th>
+                      <th style={{ padding: '14px 12px' }}>ඒකකය</th>
+                      <th style={{ padding: '14px 12px' }}>ඉතිරි ප්‍රමාණය</th>
+                      <th style={{ padding: '14px 12px' }}>තත්ත්වය</th>
+                      <th style={{ padding: '14px 12px', textAlign: 'center' }}>ක්‍රියාමාර්ග</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -296,12 +296,12 @@ export default function PharmacyInventory() {
                             {item.name}
                             {todayUsed > 0 && (
                               <div style={{ fontSize: '11px', color: '#d97706', marginTop: '4px', fontWeight: 'normal' }}>
-                                ⚡ Issued today: <strong>{todayUsed} {item.unit || 'Units'}</strong>
+                                ⚡ අද නිකුත් කළ ප්‍රමාණය: <strong>{todayUsed} {item.unit || 'ඒකක'}</strong>
                               </div>
                             )}
                           </td>
                           <td style={{ padding: '16px 12px', color: '#5c4a42', verticalAlign: 'middle' }}>
-                            {item.unit || 'Units'}
+                            {item.unit || 'ඒකක'}
                           </td>
                           <td style={{ padding: '16px 12px', fontWeight: 'bold', color: isLow ? '#b91c1c' : '#2c221e', verticalAlign: 'middle' }}>
                             {currentQty}
@@ -316,7 +316,7 @@ export default function PharmacyInventory() {
                               color: isLow ? '#991b1b' : '#065f46',
                               display: 'inline-block'
                             }}>
-                              {isLow ? 'Low Stock' : 'In Stock'}
+                              {isLow ? 'තොගය අඩුයි' : 'තොගයේ ඇත'}
                             </span>
                           </td>
                           <td style={{ padding: '16px 12px', textAlign: 'center', verticalAlign: 'middle' }}>
@@ -325,12 +325,12 @@ export default function PharmacyInventory() {
                                 onClick={() => handleOpenEditModal(item)}
                                 style={{ background: '#f3ede2', border: 'none', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', color: '#4a3f35', fontWeight: '600' }}
                               >
-                                Update
+                                යාවත්කාලීන කරන්න
                               </button>
                               <button 
                                 onClick={() => handleDelete(item.id)}
                                 style={{ background: '#fee2e2', border: 'none', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', color: '#991b1b' }}
-                                title="Delete"
+                                title="මකන්න"
                               >
                                 🗑️
                               </button>
@@ -343,7 +343,7 @@ export default function PharmacyInventory() {
                 </table>
               </div>
             ) : (
-              <p style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>No medicines found in inventory.</p>
+              <p style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>තොගයේ ඖෂධ හමු නොවීය.</p>
             )}
 
           </div>
@@ -355,12 +355,12 @@ export default function PharmacyInventory() {
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '30px', borderRadius: '16px', width: '440px', maxWidth: '90%', boxShadow: '0 15px 30px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3 style={{ margin: '0 0 20px 0', color: '#1a5a38', fontSize: '18px', fontWeight: 'bold' }}>
-              {isEditing ? 'Update Medicine Information' : 'Add New Ayurvedic Medicine'}
+              {isEditing ? 'ඖෂධ තොරතුරු යාවත්කාලීන කරන්න' : 'නව ආයුර්වේද ඖෂධයක් එක් කරන්න'}
             </h3>
             
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>Medicine Name</label>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>ඖෂධයේ නම</label>
                 <select 
                   value={medName} 
                   onChange={(e) => setMedName(e.target.value)} 
@@ -374,19 +374,19 @@ export default function PharmacyInventory() {
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>Category</label>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>වර්ගය</label>
                 <input 
                   type="text" 
                   value={category} 
                   onChange={(e) => setCategory(e.target.value)} 
-                  placeholder="e.g., Tablet / Syrup" 
+                  placeholder="උදා: පෙති / සිරප්"
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }} 
                 />
               </div>
 
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>Quantity</label>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>ප්‍රමාණය</label>
                   <input 
                     type="number" 
                     value={quantity} 
@@ -396,12 +396,12 @@ export default function PharmacyInventory() {
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>Unit</label>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>ඒකකය</label>
                   <input 
                     type="text" 
                     value={unit} 
                     onChange={(e) => setUnit(e.target.value)} 
-                    placeholder="e.g., Tablets, Bottles" 
+                    placeholder="උදා: පෙති, බෝතල්"
                     required 
                     style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }} 
                   />
@@ -409,13 +409,13 @@ export default function PharmacyInventory() {
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>Standard Dosage Option</label>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>සාමාන්‍ය මාත්‍රා විකල්පය</label>
                 <select 
                   value={dosageOption} 
                   onChange={(e) => setDosageOption(e.target.value)} 
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', background: '#fff' }}
                 >
-                  <option value="">-- Select dosage option --</option>
+                  <option value="">-- මාත්‍රා විකල්පයක් තෝරන්න --</option>
                   {DOSAGE_OPTIONS.map((opt, idx) => (
                     <option key={idx} value={opt}>{opt}</option>
                   ))}
@@ -423,7 +423,7 @@ export default function PharmacyInventory() {
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block' }}>Minimum Stock Level (for alerts)</label>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block' }}>අවම තොග මට්ටම (දැනුම්දීම් සඳහා)</label>
                 <input 
                   type="number" 
                   value={minLevel} 
@@ -439,13 +439,13 @@ export default function PharmacyInventory() {
                   onClick={() => setShowModal(false)} 
                   style={{ flex: 1, background: '#f3ede2', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', color: '#5c4a42' }}
                 >
-                  Cancel
+                  අවලංගු කරන්න
                 </button>
                 <button 
                   type="submit" 
                   style={{ flex: 1, background: '#1a5a38', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
                 >
-                  Save
+                  සුරකින්න
                 </button>
               </div>
             </form>
