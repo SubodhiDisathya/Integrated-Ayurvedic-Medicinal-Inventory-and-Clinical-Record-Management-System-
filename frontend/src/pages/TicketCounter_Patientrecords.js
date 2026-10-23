@@ -54,7 +54,7 @@ export default function PatientRecords() {
           } else {
             formattedDate = new Date().toISOString().split('T')[0];
           }
-        } catch (e) {
+        } catch (e) { 
           formattedDate = 'N/A';
         }
 

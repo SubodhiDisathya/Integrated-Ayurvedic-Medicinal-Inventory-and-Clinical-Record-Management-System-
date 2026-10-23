@@ -1,54 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { calculateTotalQuantity } from '../../utils/medicineQuantity';
 
 // Component & CSS Imports
 import SidebarPhar from '../../components/Sidebar_phar';
 import './PharmacyDashboard.css';
 
-// 🧮 100% Accurate Calculation Function
-export const calculateTotalQuantity = (med) => {
-  if (!med) return 0;
-  if (med.totalQty !== undefined && !isNaN(Number(med.totalQty)) && Number(med.totalQty) > 0) {
-    return Number(med.totalQty);
-  }
-  if (med.quantity !== undefined && !isNaN(Number(med.quantity)) && Number(med.quantity) > 0) {
-    return Number(med.quantity);
-  }
-
-  const dosageStr = String(med.dosage || med.dosageOption || '').toLowerCase();
-  const durationStr = String(med.duration || med.days || '').toLowerCase();
-
-  // 1. දින ගණන (Days)
-  let days = 1;
-  const durationMatches = durationStr.match(/\d+/);
-  if (durationMatches) {
-    days = Number(durationMatches[0]) || 1;
-  }
-  if (durationStr.includes('සති') || durationStr.includes('week')) {
-    days = days * 7;
-  }
-
-  // 2. වේලකට ගන්නා ප්‍රමාණය (Per-Dose)
-  let perDose = 1;
-  const dosageMatches = dosageStr.match(/\d+/g);
-  if (dosageMatches && dosageMatches.length > 0) {
-    perDose = Number(dosageMatches[0]) || 1;
-  }
-
-  // 3. දිනකට වාර ගණන (Times per day)
-  let timesPerDay = 1;
-  if (dosageStr.includes('දිනකට 3') || dosageStr.includes('3 වරක්') || dosageStr.includes('3 times') || dosageStr.includes('දිනකට තුන් වරක්')) {
-    timesPerDay = 3;
-  } else if (dosageStr.includes('උදේ සවස') || dosageStr.includes('උදේ/සවස') || dosageStr.includes('දිනකට 2') || dosageStr.includes('2 වරක්') || dosageStr.includes('දිනකට දෙවරක්')) {
-    timesPerDay = 2;
-  } else if (dosageStr.includes('දිනකට 4') || dosageStr.includes('4 වරක්')) {
-    timesPerDay = 4;
-  }
-
-  const total = perDose * timesPerDay * days;
-  return isNaN(total) || total <= 0 ? 1 : total;
-};
+export { calculateTotalQuantity };
 
 const AYURVEDIC_MEDICINES = [
   'ත්‍රිඵලා පෙති',

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 // Firebase Imports
 import { db } from '../../firebase/firebase';
 import { collection, onSnapshot, doc, updateDoc, query, where, getDocs, runTransaction } from 'firebase/firestore';
+import { calculateMedicineQuantity, calculateTotalQuantity, isMilliliterUnit } from '../../utils/medicineQuantity';
 
 // Component Import
 import SidebarPhar from '../../components/Sidebar_phar';
@@ -11,49 +12,7 @@ import SidebarPhar from '../../components/Sidebar_phar';
 // CSS Import
 import './PharmacyDashboard.css';
 
-// 🧮 100% Robust & Accurate Calculation Helper Function
-export const calculateTotalQuantity = (med) => {
-  if (!med) return 0;
-  if (med.totalQty !== undefined && !isNaN(Number(med.totalQty)) && Number(med.totalQty) > 0) {
-    return Number(med.totalQty);
-  }
-  if (med.quantity !== undefined && !isNaN(Number(med.quantity)) && Number(med.quantity) > 0) {
-    return Number(med.quantity);
-  }
-
-  const dosageStr = String(med.dosage || med.dosageOption || '').toLowerCase();
-  const durationStr = String(med.duration || med.days || '').toLowerCase();
-
-  // 1. දින ගණන (Days) නිවැරදිව ලබා ගැනීම
-  let days = 1;
-  const durationMatches = durationStr.match(/\d+/);
-  if (durationMatches) {
-    days = Number(durationMatches[0]) || 1;
-  }
-  if (durationStr.includes('සති') || durationStr.includes('week')) {
-    days = days * 7;
-  }
-
-  // 2. වේලකට ගන්නා ප්‍රමාණය (Per-Dose) නිවැරදිව ලබා ගැනීම
-  let perDose = 1;
-  const dosageMatches = dosageStr.match(/\d+/g);
-  if (dosageMatches && dosageMatches.length > 0) {
-    perDose = Number(dosageMatches[0]) || 1;
-  }
-
-  // 3. දිනකට වාර ගණන (Frequency / Times per day)
-  let timesPerDay = 1;
-  if (dosageStr.includes('දිනකට 3') || dosageStr.includes('3 වරක්') || dosageStr.includes('3 times') || dosageStr.includes('දිනකට තුන් වරක්')) {
-    timesPerDay = 3;
-  } else if (dosageStr.includes('උදේ සවස') || dosageStr.includes('උදේ/සවස') || dosageStr.includes('දිනකට 2') || dosageStr.includes('2 වරක්') || dosageStr.includes('දිනකට දෙවරක්')) {
-    timesPerDay = 2;
-  } else if (dosageStr.includes('දිනකට 4') || dosageStr.includes('4 වරක්')) {
-    timesPerDay = 4;
-  }
-
-  const total = perDose * timesPerDay * days;
-  return isNaN(total) || total <= 0 ? 1 : total;
-};
+export { calculateTotalQuantity };
 
 export default function PharmacyPatientPrescription() {
   const navigate = useNavigate();
@@ -146,15 +105,23 @@ export default function PharmacyPatientPrescription() {
         const name = med.name?.trim();
         const inventoryRef = inventoryByName.get(name);
         if (!inventoryRef) {
-          throw new Error(`Medicine "${name || 'Unknown'}" was not found in inventory.`);
+          throw new Error(`"${name || 'නොදන්නා ඖෂධය'}" තොග ලැයිස්තුවේ හමු නොවීය.`);
         }
 
-        const issuedQty = calculateTotalQuantity(med);
+        const issue = calculateMedicineQuantity(med);
+        if (!issue.quantity) {
+          throw new Error(`"${name}" සඳහා නිකුත් කළ යුතු ප්‍රමාණය ගණනය කළ නොහැක.`);
+        }
+
         const existingChange = stockChanges.get(inventoryRef.id);
+        if (existingChange && existingChange.unit !== issue.unit) {
+          throw new Error(`"${name}" ඖෂධය සඳහා එකිනෙකට වෙනස් මිනුම් ඒකක සහිත මාත්‍රා තිබේ.`);
+        }
         stockChanges.set(inventoryRef.id, {
           ref: inventoryRef,
           name,
-          issuedQty: (existingChange?.issuedQty || 0) + issuedQty
+          unit: issue.unit,
+          issuedQty: (existingChange?.issuedQty || 0) + issue.quantity
         });
       }
 
@@ -162,7 +129,7 @@ export default function PharmacyPatientPrescription() {
       await runTransaction(db, async (transaction) => {
         const prescriptionSnapshot = await transaction.get(prescriptionRef);
         if (!prescriptionSnapshot.exists() || prescriptionSnapshot.data().status !== 'Pending') {
-          throw new Error('This prescription has already been issued or is no longer pending.');
+          throw new Error('මෙම බෙහෙත් තුණ්ඩුව දැනටමත් නිකුත් කර ඇත, නැතහොත් තවදුරටත් පොරොත්තු තත්ත්වයේ නොමැත.');
         }
 
         const changes = Array.from(stockChanges.values());
@@ -173,12 +140,20 @@ export default function PharmacyPatientPrescription() {
         changes.forEach((change, index) => {
           const inventoryDoc = inventorySnapshots[index];
           if (!inventoryDoc.exists()) {
-            throw new Error(`Medicine "${change.name}" was not found in inventory.`);
+            throw new Error(`"${change.name}" ඖෂධය තොග ලැයිස්තුවේ හමු නොවීය.`);
           }
 
-          const currentStock = Number(inventoryDoc.data().quantity || 0);
+          const inventoryData = inventoryDoc.data();
+          if (change.unit === 'ml' && !isMilliliterUnit(inventoryData.unit)) {
+            throw new Error(`"${change.name}" ඖෂධයේ තොග ඒකකය mL නොවේ. බෝතල් ප්‍රමාණය අනුමාන නොකරන බැවින්, තොග ඒකකය mL කර නිවැරදි ඉතිරි mL ප්‍රමාණය ඇතුළත් කරන්න.`);
+          }
+          if (change.unit === 'count' && isMilliliterUnit(inventoryData.unit)) {
+            throw new Error(`"${change.name}" සඳහා මාත්‍රාව mL ලෙස සඳහන් කරන්න. තොග ඒකකය mL වේ.`);
+          }
+
+          const currentStock = Number(inventoryData.quantity || 0);
           if (!Number.isFinite(currentStock) || currentStock < change.issuedQty) {
-            throw new Error(`Not enough stock for "${change.name}". Available: ${currentStock}. Required: ${change.issuedQty}.`);
+            throw new Error(`"${change.name}" සඳහා තොගය ප්‍රමාණවත් නැත. ඉතිරිව ඇත්තේ ${currentStock}යි; අවශ්‍ය ප්‍රමාණය ${change.issuedQty}යි.`);
           }
         });
 
@@ -189,10 +164,10 @@ export default function PharmacyPatientPrescription() {
         transaction.update(prescriptionRef, { status: 'Completed' });
       });
 
-      alert('Medicines successfully issued and inventory updated!');
+      alert('ඖෂධ සාර්ථකව නිකුත් කර තොගය යාවත්කාලීන කරන ලදී!');
     } catch (error) {
       console.error("Error updating prescription status: ", error);
-      alert(error instanceof Error ? error.message : 'Error completing prescription.');
+      alert(error instanceof Error ? error.message : 'බෙහෙත් තුණ්ඩුව සම්පූර්ණ කිරීමේදී දෝෂයක් ඇති විය.');
     }
   };
 
@@ -281,6 +256,7 @@ export default function PharmacyPatientPrescription() {
                                 <span style={{ fontSize: '13px', color: med.isIssued ? '#718096' : '#2d3748', textDecoration: med.isIssued ? 'line-through' : 'none' }}>
                                   <strong>{med.name}</strong> 
                                   {med.dosage ? ` - ${med.dosage}` : ''}
+                                  {med.frequency ? ` (${med.frequency})` : ''}
                                   {med.duration ? ` (${med.duration})` : ''}
                                 </span>
                               </label>

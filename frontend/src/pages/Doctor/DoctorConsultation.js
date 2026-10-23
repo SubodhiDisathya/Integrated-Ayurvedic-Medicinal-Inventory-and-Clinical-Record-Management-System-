@@ -62,6 +62,14 @@ const DURATION_OPTIONS = [
   'මාස 1ක්'
 ];
 
+const FREQUENCY_OPTIONS = [
+  'උදේ',
+  'උදේ, සවස',
+  'උදේ, දවල්, රාත්‍රී',
+  'උදේ, සවස, රාත්‍රී',
+  'දිනකට 4 වරක්'
+];
+
 export default function DoctorConsultation() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -83,7 +91,7 @@ export default function DoctorConsultation() {
 
   // Form States
   const [diseases, setDiseases] = useState(['']);
-  const [medicines, setMedicines] = useState([{ name: '', dosage: '', duration: '', isIssued: false }]);
+  const [medicines, setMedicines] = useState([{ name: '', dosage: '', frequency: '', duration: '', isIssued: false }]);
   const [nextVisit, setNextVisit] = useState('');
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
@@ -155,7 +163,7 @@ export default function DoctorConsultation() {
   };
   const handleRemoveDisease = (index) => setDiseases(diseases.filter((_, i) => i !== index));
 
-  const handleAddMedicine = () => setMedicines((prev) => [...prev, { name: '', dosage: '', duration: '', isIssued: false }]);
+  const handleAddMedicine = () => setMedicines((prev) => [...prev, { name: '', dosage: '', frequency: '', duration: '', isIssued: false }]);
   const handleMedicineChange = (index, field, value) => {
     const updated = [...medicines];
     if (updated[index]) {
@@ -197,6 +205,7 @@ export default function DoctorConsultation() {
       const formattedMedsList = medicines.map((m) => {
         let text = m.name;
         if (m.dosage) text += ` - ${m.dosage}`;
+        if (m.frequency) text += ` (${m.frequency})`;
         if (m.duration) text += ` (${m.duration})`;
         return text;
       });
@@ -401,7 +410,7 @@ export default function DoctorConsultation() {
                 <label>අද දින ලබාදෙන ඖෂධ (Prescription)</label>
                 {medicines.map((med, index) => (
                   <div key={index} style={{ marginBottom: '16px', padding: '12px', border: '1px solid #cbd5e0', borderRadius: '8px', backgroundColor: '#fff' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', alignItems: 'center' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', alignItems: 'center' }}>
                       
                       <div>
                         <input
@@ -429,6 +438,7 @@ export default function DoctorConsultation() {
                           value={med.dosage}
                           onChange={(e) => handleMedicineChange(index, 'dosage', e.target.value)}
                           disabled={isPharmacySent || loading}
+                          required
                           style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
                         />
                         <datalist id={`med-dosages-${index}`}>
@@ -439,6 +449,21 @@ export default function DoctorConsultation() {
                       </div>
 
                       <div>
+                        <select
+                          value={med.frequency || ''}
+                          onChange={(e) => handleMedicineChange(index, 'frequency', e.target.value)}
+                          disabled={isPharmacySent || loading}
+                          required
+                          style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', backgroundColor: '#fff' }}
+                        >
+                          <option value="">ඖෂධය ලබාදෙන වේලාව තෝරන්න</option>
+                          {FREQUENCY_OPTIONS.map((item) => (
+                            <option key={item} value={item}>{item}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
                         <input
                           type="text"
                           list={`med-durations-${index}`}
@@ -446,6 +471,7 @@ export default function DoctorConsultation() {
                           value={med.duration}
                           onChange={(e) => handleMedicineChange(index, 'duration', e.target.value)}
                           disabled={isPharmacySent || loading}
+                          required
                           style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
                         />
                         <datalist id={`med-durations-${index}`}>
