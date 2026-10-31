@@ -42,13 +42,11 @@ const MEDICINE_NAMES = [
 ];
 
 const DOSAGE_OPTIONS = [
-  'කෝප්ප භාගයක් (60 mL)',
-  'කෝප්ප එකක් (120 mL)',
-  'තේ හැන්දක් (3 g)',
-  'තේ හැඳි 2ක් (6 g)',
+  'කෝප්ප භාගයක් (60 ml)',
+  'කෝප්ප එකක් (120 ml)',
   'පෙති 1 බැගින්',
   'පෙති 2 බැගින්',
-  'මේස හැන්දක් (15 mL)',
+  'මේස හැන්දක් (15 ml)',
   'ආලේප කිරීම (අවශ්‍ය පමණ)'
 ];
 
@@ -64,10 +62,9 @@ const DURATION_OPTIONS = [
 
 const FREQUENCY_OPTIONS = [
   'උදේ',
-  'උදේ, සවස',
   'උදේ, දවල්, රාත්‍රී',
-  'උදේ, සවස, රාත්‍රී',
-  'දිනකට 4 වරක්'
+  'උදේ, රාත්‍රී',
+  'රාත්‍රී'
 ];
 
 export default function DoctorConsultation() {
@@ -449,18 +446,21 @@ export default function DoctorConsultation() {
                       </div>
 
                       <div>
-                        <select
+                        <input
+                          type="text"
+                          list={`med-frequencies-${index}`}
+                          placeholder="වේලාව (උදා: උදේ, සවස)"
                           value={med.frequency || ''}
                           onChange={(e) => handleMedicineChange(index, 'frequency', e.target.value)}
                           disabled={isPharmacySent || loading}
                           required
                           style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', backgroundColor: '#fff' }}
-                        >
-                          <option value="">ඖෂධය ලබාදෙන වේලාව තෝරන්න</option>
-                          {FREQUENCY_OPTIONS.map((item) => (
-                            <option key={item} value={item}>{item}</option>
+                        />
+                        <datalist id={`med-frequencies-${index}`}>
+                          {FREQUENCY_OPTIONS.map((item, idx) => (
+                            <option key={idx} value={item} />
                           ))}
-                        </select>
+                        </datalist>
                       </div>
 
                       <div>

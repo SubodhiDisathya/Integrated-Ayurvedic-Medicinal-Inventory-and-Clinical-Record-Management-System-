@@ -1,25 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../firebase/firebase';
 import { collection, onSnapshot, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { getInventoryQuantity, getInventoryThreshold, isLowStock } from '../../utils/inventoryStock';
 
 import SidebarPhar from '../../components/Sidebar_phar';
 import './LowStockInventory.css';
 
-// අද්විතීය ඖෂධ 6 සහ ඒවායේ අමුද්‍රව්‍ය
-const INITIAL_MEDICINES = [
-  { id: '1', name: 'බුද්ධරාජ කල්ක', ingredients: 'අරළු ගෙඩි, බුළු ගෙඩි, නෙල්ලි ගෙඩි, ඉඟුරු, ගම්මිරිස්, තිප්පිලි', currentStock: 40, unit: 'පැකට්', expiryDate: '2026-12-31', status: 'තොගයේ ඇත', threshold: 10 },
-  { id: '2', name: 'සරස්වතාරිෂ්ටය', ingredients: 'වැල්මී මුල්, වදකහ, ඉඟුරු, තිප්පිලි', currentStock: 50, unit: 'බෝතල්', expiryDate: '2026-12-31', status: 'තොගයේ ඇත', threshold: 10 },
-  { id: '3', name: 'කොලසැලෙස්මා තෛලය', ingredients: 'ආඩතෝඩා කොළ, පාවට්ටා කොළ, වෙනිවැල්ගැට, ඉඟුරු, තල තෙල්', currentStock: 30, unit: 'බෝතල්', expiryDate: '2026-12-31', status: 'තොගයේ ඇත', threshold: 10 },
-  { id: '4', name: 'ජීවලේප ආලේපනය', ingredients: 'පාවට්ටා කොළ, ආඩතෝඩා කොළ, වෙනිවැල්ගැට, කහ, පොල්තෙල්', currentStock: 30, unit: 'ආලේපන', expiryDate: '2026-12-31', status: 'තොගයේ ඇත', threshold: 10 },
-  { id: '5', name: 'අරළු පෙති', ingredients: 'අරළු ගෙඩි', currentStock: 300, unit: 'පෙති', expiryDate: '2026-12-31', status: 'තොගයේ ඇත', threshold: 10 },
-  { id: '6', name: 'ත්‍රිඵලා පෙති', ingredients: 'අරළු ගෙඩි, බුළු ගෙඩි, නෙල්ලි ගෙඩි', currentStock: 500, unit: 'පෙති', expiryDate: '2026-12-31', status: 'තොගයේ ඇත', threshold: 10 }
-];
-
 export default function LowStockInventory() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [inventory, setInventory] = useState(INITIAL_MEDICINES);
+  const [inventory, setInventory] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationPermission, setNotificationPermission] = useState(
+    typeof window !== 'undefined' && 'Notification' in window ? window.Notification.permission : 'unsupported'
+  );
+  const previousLowStock = useRef(null);
 
   // Modal State සඳහා
   const [showModal, setShowModal] = useState(false);
@@ -28,48 +25,76 @@ export default function LowStockInventory() {
   const [editStock, setEditStock] = useState('');
   const [editUnit, setEditUnit] = useState('');
 
-  // Firebase Firestore Integration
   useEffect(() => {
-    try {
-      const unsub = onSnapshot(collection(db, 'inventory'), (snapshot) => {
-        if (!snapshot.empty) {
-          const list = [];
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const matchedSample = INITIAL_MEDICINES.find(m => m.name === data.name);
-            list.push({ 
-              id: docSnap.id, 
-              name: data.name,
-              ingredients: data.ingredients || (matchedSample ? matchedSample.ingredients : 'සාම්ප්‍රදායික ඖෂධීය අමුද්‍රව්‍ය'),
-              currentStock: data.currentStock !== undefined ? data.currentStock : (data.quantity || 10),
-              threshold: data.threshold || data.minLevel || 10,
-              unit: data.unit || 'ඒකක',
-              expiryDate: data.expiryDate || '2026-12-31',
-              ...data 
+    const unsubscribe = onSnapshot(collection(db, 'inventory'), (snapshot) => {
+      const list = [];
+      const seenNames = new Set();
+      const lowStockById = new Map();
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const name = data.name?.trim();
+        if (!name || seenNames.has(name)) return;
+
+        seenNames.add(name);
+        const item = {
+          ...data,
+          id: docSnap.id,
+          name,
+          ingredients: data.ingredients || 'සාම්ප්‍රදායික ඖෂධීය අමුද්‍රව්‍ය',
+          currentStock: getInventoryQuantity(data),
+          threshold: getInventoryThreshold(data),
+          unit: data.unit || 'ඒකක',
+          expiryDate: data.expiryDate || '—'
+        };
+        list.push(item);
+        lowStockById.set(docSnap.id, isLowStock(item));
+      });
+
+      if (previousLowStock.current) {
+        const newlyLowItems = list.filter((item) =>
+          lowStockById.get(item.id) && !previousLowStock.current.get(item.id)
+        );
+        if (newlyLowItems.length > 0) {
+          setNotifications((current) => [
+            ...newlyLowItems.map((item) => ({
+              id: `${item.id}-${Date.now()}`,
+              message: `${item.name}: තොගය ${item.currentStock} ${item.unit} දක්වා අඩු වී ඇත.`
+            })),
+            ...current
+          ].slice(0, 5));
+
+          const message = newlyLowItems.map((item) => item.name).join(', ');
+          setNotificationMessage(`${message} සඳහා අඩු තොග අනතුරු ඇඟවීමක් ඇත.`);
+
+          if ('Notification' in window && window.Notification.permission === 'granted') {
+            newlyLowItems.forEach((item) => {
+              new window.Notification('අඩු තොග අනතුරු ඇඟවීම', {
+                body: `${item.name}: ඉතිරි තොගය ${item.currentStock} ${item.unit}.`
+              });
             });
-          });
-
-          // එකම නම ඇති ඖෂධ ඉවත් කර Unique 6ක් පමණක් තබා ගැනීම
-          const uniqueList = [];
-          const seenNames = new Set();
-
-          for (const item of list) {
-            if (item.name && !seenNames.has(item.name)) {
-              seenNames.add(item.name);
-              uniqueList.push(item);
-            }
-          }
-
-          if (uniqueList.length > 0) {
-            setInventory(uniqueList.slice(0, 6));
           }
         }
-      });
-      return () => unsub();
-    } catch (error) {
-      console.error("Firebase error: ", error);
-    }
+      }
+
+      previousLowStock.current = lowStockById;
+      setInventory(list);
+    }, (error) => {
+      console.error('Error fetching inventory: ', error);
+    });
+
+    return () => unsubscribe();
   }, []);
+
+  const handleEnableNotifications = async () => {
+    if (!('Notification' in window)) {
+      setNotificationPermission('unsupported');
+      return;
+    }
+
+    const permission = await window.Notification.requestPermission();
+    setNotificationPermission(permission);
+  };
 
   // Edit Modal එක විවෘත කිරීම
   const handleOpenEditModal = (item) => {
@@ -87,6 +112,7 @@ export default function LowStockInventory() {
       if (currentId && typeof currentId === 'string' && currentId.length > 5) {
         const medRef = doc(db, 'inventory', currentId);
         await updateDoc(medRef, {
+          quantity: Number(editStock),
           currentStock: Number(editStock),
           unit: editUnit
         });
@@ -120,16 +146,8 @@ export default function LowStockInventory() {
     }
   };
 
-  const displayInventory = inventory.reduce((acc, current) => {
-    const x = acc.find(item => item.name === current.name);
-    if (!x) {
-      return acc.concat([current]);
-    } else {
-      return acc;
-    }
-  }, []).slice(0, 6);
-
-  const lowStockAlerts = displayInventory.filter(item => Number(item.currentStock || 0) <= Number(item.threshold || 10));
+  const displayInventory = inventory;
+  const lowStockAlerts = displayInventory.filter(isLowStock);
 
   const filteredInventory = displayInventory.filter(item =>
     (item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -155,16 +173,29 @@ export default function LowStockInventory() {
             />
           </div>
           <div className="ls-user-profile">
-            <div className="ls-nav-bell">
+            <button
+              type="button"
+              className="ls-nav-bell"
+              aria-label="අඩු තොග අනතුරු ඇඟවීම්"
+              onClick={() => document.getElementById('low-stock-alerts')?.scrollIntoView({ behavior: 'smooth' })}
+              style={{ border: 0, background: 'transparent' }}
+            >
               <i className="bi bi-bell-fill"></i>
               <span className="ls-badge-count">{lowStockAlerts.length}</span>
-            </div>
+            </button>
             <div className="ls-user-info">
               <i className="bi bi-person-circle"></i>
               <span>ෆාමසි කාර්ය මණ්ඩලය</span>
             </div>
           </div>
         </header>
+
+        {notificationMessage && (
+          <div role="status" aria-live="polite" style={{ margin: '12px 28px 0', padding: '12px 16px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '8px', color: '#9a3412' }}>
+            <i className="bi bi-exclamation-triangle-fill" aria-hidden="true"></i> {notificationMessage}
+            <button type="button" onClick={() => setNotificationMessage('')} aria-label="දැනුම්දීම වසන්න" style={{ float: 'right', border: 0, background: 'transparent', cursor: 'pointer' }}>×</button>
+          </div>
+        )}
 
         <div className="ls-body-content">
           {/* ප්‍රධාන ඉන්වෙන්ටරි වගු අංශය */}
@@ -225,7 +256,7 @@ export default function LowStockInventory() {
                 </thead>
                 <tbody>
                   {filteredInventory.map((med, idx) => {
-                    const isLow = Number(med.currentStock || 0) <= Number(med.threshold || 10);
+                    const isLow = isLowStock(med);
                     return (
                       <tr key={med.id || idx}>
                         <td>{idx + 1}</td>
@@ -276,7 +307,7 @@ export default function LowStockInventory() {
           {/* දකුණුපස අනතුරු ඇඟවීම් සහ විකල්ප පුවරුව */}
           <div className="ls-right-panel">
             {/* අඩු තොග අනතුරු ඇඟවීම් පෙට්ටිය */}
-            <div className="ls-alert-card">
+            <div className="ls-alert-card" id="low-stock-alerts">
               <div className="ls-alert-header">
                 <h3><i className="bi bi-bell-fill text-danger"></i> අඩු තොග අනතුරු ඇඟවීම්</h3>
                 <span className="ls-alert-badge">{lowStockAlerts.length}</span>
@@ -316,22 +347,23 @@ export default function LowStockInventory() {
 
             {/* මෑත කාලීන දැනුම්දීම් */}
             <div className="ls-notifications-card">
-              <h3>මෑත කාලීන දැනුම්දීම්</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ margin: 0 }}>මෑත කාලීන දැනුම්දීම්</h3>
+                {notificationPermission === 'default' && (
+                  <button type="button" onClick={handleEnableNotifications} style={{ border: 0, background: 'transparent', color: '#137333', cursor: 'pointer', fontSize: '11px' }}>
+                    දැනුම්දීම් සක්‍රිය කරන්න
+                  </button>
+                )}
+              </div>
               <ul className="ls-notif-list">
-                <li>
-                  <span className="dot red"></span>
-                  <div>
-                    <p>ත්‍රිඵලා පෙති සඳහා අඩු තොග අනතුරු ඇඟවීමක් ඇත</p>
-                    <small>පැය 2කට පෙර</small>
-                  </div>
-                </li>
-                <li>
-                  <span className="dot yellow"></span>
-                  <div>
-                    <p>කොලසැලෙස්මා තෛලය සඳහා අඩු තොග අනතුරු ඇඟවීමක් ඇත</p>
-                    <small>පැය 3කට පෙර</small>
-                  </div>
-                </li>
+                {notifications.length > 0 ? notifications.map((notification) => (
+                  <li key={notification.id}>
+                    <span className="dot red"></span>
+                    <div><p>{notification.message}</p><small>දැන්</small></div>
+                  </li>
+                )) : (
+                  <li><span className="dot yellow"></span><div><p>නව අඩු තොග දැනුම්දීම් නොමැත.</p></div></li>
+                )}
               </ul>
             </div>
           </div> 

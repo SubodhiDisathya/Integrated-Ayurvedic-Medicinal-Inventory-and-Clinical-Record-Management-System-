@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 // Firebase Imports
 import { db } from '../../firebase/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
+import { isLowStock } from '../../utils/inventoryStock';
 
 // Component Import
 import SidebarPhar from '../../components/Sidebar_phar';
@@ -28,7 +29,7 @@ export default function PharmacyDashboard() {
   useEffect(() => {
     // Real-time listener for inventory items from Firestore
     const inventoryUnsub = onSnapshot(
-      collection(db, 'medicines'),
+      collection(db, 'inventory'),
       (snapshot) => {
         let total = 0;
         let lowStock = 0;
@@ -36,18 +37,15 @@ export default function PharmacyDashboard() {
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           total++;
-          const qty = Number(data.quantity || data.stock || 0);
-          const threshold = Number(data.threshold || 10);
-          
-          if (qty <= threshold) {
+          if (isLowStock(data)) {
             lowStock++;
           }
         });
 
         setStats((prev) => ({
           ...prev,
-          totalItems: total || 8,
-          lowStockCount: lowStock || 4,
+          totalItems: total,
+          lowStockCount: lowStock,
         }));
       },
       (error) => console.error('Error fetching inventory stats:', error)
@@ -94,7 +92,7 @@ export default function PharmacyDashboard() {
           {/* Stats Cards Section */}
           <section className="stats-grid-doctor">
             <div className="stat-card">
-              <div className="stat-number">{stats.totalItems || 8}</div>
+              <div className="stat-number">{stats.totalItems}</div>
               <div className="stat-info">
                 <h4>සම්පූර්ණ ඖෂධ</h4>
                 <p>ඉන්වෙන්ටරිය</p>
@@ -102,7 +100,18 @@ export default function PharmacyDashboard() {
             </div>
 
             <div className="stat-card">
-              <div className="stat-number" style={{ color: '#d97706' }}>{stats.lowStockCount || 4}</div>
+              <div
+                className="stat-number"
+                style={{ color: '#d97706', cursor: 'pointer' }}
+                onClick={() => navigate('/pharmacy/low-stock')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') navigate('/pharmacy/low-stock');
+                }}
+              >
+                {stats.lowStockCount}
+              </div>
               <div className="stat-info">
                 <h4>අඩු තොග අනතුරු</h4>
                 <p>අවධානය පිණිස</p>
