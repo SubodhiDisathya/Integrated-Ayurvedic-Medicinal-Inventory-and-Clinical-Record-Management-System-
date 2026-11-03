@@ -14,13 +14,10 @@ import {
   arrayUnion, 
   serverTimestamp 
 } from 'firebase/firestore';
+import SidebarDoc from '../../components/SidebarDoctor';
 
 // CSS Import
 import './DoctorConsultation.css';
-
-// Asset Imports
-import logoEmblem from '../../assets/logo-top.png';
-import cornerLeaves from '../../assets/corner-leaves.png';
 
 // Dropdown options
 const DISEASE_OPTIONS = [
@@ -266,34 +263,7 @@ export default function DoctorConsultation() {
 
   return (
     <div className="doctor-container">
-      <aside className="doctor-sidebar">
-        <div className="sidebar-brand">
-          <img src={logoEmblem} alt="Sri Lanka Emblem" className="brand-logo" />
-          <h2 className="brand-title">ජාතික ආයුර්වේද</h2>
-          <p className="brand-subtitle">ඖෂධ තොග හා රෝගීන් සත්කාරක කළමනාකරණය</p>
-          <span className="brand-tag">MANAGEMENT SYSTEM</span>
-        </div>
-
-        <nav className="sidebar-menu">
-          <button className="menu-item" onClick={() => navigate('/doctor/dashboard')}>
-            <i className="bi bi-house-door-fill"></i> මුල් පිටුව
-          </button>
-          <button className="menu-item active" onClick={() => navigate('/doctor/todays-patients')}>
-            <i className="bi bi-people-fill"></i> අද දින පැමිණි රෝගීන්
-          </button>
-          <button className="menu-item" onClick={() => navigate('/doctor/treatment-history')}>
-            <i className="bi bi-clock-history"></i> ප්‍රතිකාර ඉතිහාසය
-          </button>
-        </nav>
-
-        <div className="sidebar-footer-bg">
-          <img src={cornerLeaves} alt="Decor Leaves" className="leaf-decor" />
-        </div>
-
-        <button className="logout-btn" onClick={() => navigate('/')}>
-          <i className="bi bi-box-arrow-left"></i> පිටවීම
-        </button>
-      </aside>
+      <SidebarDoc />
 
       <main className="doctor-main">
         <header className="top-bar">

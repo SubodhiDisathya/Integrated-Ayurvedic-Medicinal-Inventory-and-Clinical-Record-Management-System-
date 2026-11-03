@@ -1,20 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 // Firebase Import
 import { db } from '../../firebase/firebase';
 import { collection, onSnapshot, query } from 'firebase/firestore';
+import SidebarDoc from '../../components/SidebarDoctor';
 
 // CSS Import
 import './Treatmenthistory.css';
 
-// Asset Imports
-import logoEmblem from '../../assets/logo-top.png';
-import cornerLeaves from '../../assets/corner-leaves.png';
-
 export default function Treatmenthistory() {
-  const navigate = useNavigate();
-
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -91,38 +85,7 @@ export default function Treatmenthistory() {
 
   return (
     <div className="th-container">
-      {/* Sidebar Navigation */}
-      <aside className="th-sidebar no-print">
-        <div className="sidebar-brand">
-          <img src={logoEmblem} alt="Sri Lanka Emblem" className="brand-logo" />
-          <h2 className="brand-title">ජාතික ආයුර්වේද</h2>
-          <p className="brand-subtitle">ඖෂධ තොග හා රෝගීන් සත්කාරක කළමනාකරණය</p>
-          <span className="brand-tag">MANAGEMENT SYSTEM</span>
-        </div>
-
-        <nav className="sidebar-menu" aria-label="වෛද්‍ය මෙනුව">
-          <button className="menu-item" onClick={() => navigate('/doctor/dashboard')}>
-            <i className="bi bi-house-door-fill"></i> මුල් පිටුව
-          </button>
-
-          <button className="menu-item" onClick={() => navigate('/doctor/todays-patients')}>
-            <i className="bi bi-people-fill"></i> අද දින පැමිණි රෝගීන්
-          </button>
-
-          {/* 👇 මෙහි නිවැරදිව onClick එක එකතු කර ඇත */}
-          <button className="menu-item active" onClick={() => navigate('/doctor/treatment-history')}>
-            <i className="bi bi-clock-history"></i> ප්‍රතිකාර ඉතිහාසය
-          </button>
-        </nav>
-
-        <div className="sidebar-footer-bg">
-          <img src={cornerLeaves} alt="Decor Leaves" className="leaf-decor" />
-        </div>
-
-        <button className="logout-btn" onClick={() => navigate('/')}>
-          <i className="bi bi-box-arrow-left"></i> පිටවීම
-        </button>
-      </aside>
+      <SidebarDoc className="doctor-shared-sidebar-fixed th-sidebar no-print" />
 
       {/* Main Content Area */}
       <main className="th-main">

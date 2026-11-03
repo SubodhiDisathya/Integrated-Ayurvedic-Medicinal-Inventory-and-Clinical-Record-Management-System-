@@ -167,7 +167,13 @@
   vertical-align: middle;
 }
 
-.ls-ingredients-td { font-size: 12px; color: #334155; line-height: 1.4; }
+.ls-ingredients-td {
+  min-width: 130px;
+  white-space: pre-line;
+  font-size: 12px;
+  color: #334155;
+  line-height: 1.4;
+}
 
 .ls-status-pill {
   padding: 4px 10px;
@@ -274,3 +280,268 @@
 .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; }
 .dot.red { background: #ef4444; }
 .dot.yellow { background: #f59e0b; }
+
+@media (max-width: 900px) {
+  .ls-layout > .phar-sidebar {
+    width: 136px;
+    padding: 10px 6px;
+  }
+
+  .ls-layout > .phar-sidebar .phar-logo-container {
+    padding: 4px;
+    margin-bottom: 5px;
+  }
+
+  .ls-layout > .phar-sidebar .phar-brand-logo {
+    width: 36px;
+    height: 36px;
+  }
+
+  .ls-layout > .phar-sidebar .phar-brand-title {
+    font-size: 12px;
+  }
+
+  .ls-layout > .phar-sidebar .phar-brand-subtitle,
+  .ls-layout > .phar-sidebar .phar-brand-tag {
+    display: none;
+  }
+
+  .ls-layout > .phar-sidebar .phar-brand-divider {
+    margin: 10px 0 8px;
+  }
+
+  .ls-layout > .phar-sidebar .phar-menu-item {
+    padding: 8px 6px;
+    font-size: 9px;
+    line-height: 1.35;
+  }
+
+  .ls-layout > .phar-sidebar .phar-menu-icon {
+    flex: 0 0 14px;
+    margin-right: 5px;
+    font-size: 13px;
+  }
+
+  .ls-layout > .phar-sidebar .phar-logout-btn {
+    padding: 7px 4px;
+    font-size: 10px;
+  }
+
+  .ls-layout > .phar-sidebar .phar-sidebar-footer-decor {
+    width: 90px;
+    bottom: 52px;
+  }
+
+  .ls-main-wrapper {
+    min-width: 0;
+  }
+
+  .ls-topbar {
+    padding: 8px 12px;
+  }
+
+  .ls-search-bar {
+    width: min(230px, 52%);
+    padding: 6px 10px;
+  }
+
+  .ls-user-profile {
+    gap: 10px;
+  }
+
+  .ls-user-info {
+    font-size: 10px;
+  }
+
+  .ls-body-content {
+    grid-template-columns: minmax(0, 1fr) 165px;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .ls-title-area h2 {
+    font-size: 15px;
+  }
+
+  .ls-title-area p {
+    font-size: 10px;
+    margin-bottom: 10px;
+  }
+
+  .ls-stats-grid {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .ls-stat-card {
+    gap: 6px;
+    padding: 8px 6px;
+    border-radius: 8px;
+  }
+
+  .ls-stat-icon {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+
+  .ls-stat-title {
+    font-size: 8px;
+    line-height: 1.25;
+  }
+
+  .ls-stat-val {
+    font-size: 14px;
+  }
+
+  .ls-table-card {
+    overflow-x: auto;
+    padding: 5px;
+    border-radius: 8px;
+  }
+
+  .ls-table {
+    min-width: 420px;
+    table-layout: fixed;
+    font-size: 8px;
+  }
+
+  .ls-table th,
+  .ls-table td {
+    padding: 7px 4px;
+    overflow-wrap: anywhere;
+  }
+
+  .ls-table th {
+    font-size: 8px;
+    line-height: 1.3;
+  }
+
+  .ls-table th:nth-child(1) { width: 5%; }
+  .ls-table th:nth-child(2) { width: 15%; }
+  .ls-table th:nth-child(3) { width: 19%; }
+  .ls-table th:nth-child(4) { width: 13%; }
+  .ls-table th:nth-child(5) { width: 13%; }
+  .ls-table th:nth-child(6) { width: 15%; }
+  .ls-table th:nth-child(7) { width: 20%; }
+
+  .ls-ingredients-td {
+    font-size: 8px;
+  }
+
+  .ls-status-pill {
+    display: inline-block;
+    padding: 3px 4px;
+    font-size: 7px;
+  }
+
+  .ls-right-panel {
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .ls-alert-card,
+  .ls-quick-actions-card,
+  .ls-notifications-card {
+    padding: 9px 8px;
+    border-radius: 8px;
+  }
+
+  .ls-alert-header {
+    gap: 4px;
+    margin-bottom: 7px;
+  }
+
+  .ls-alert-header h3,
+  .ls-quick-actions-card h3,
+  .ls-notifications-card h3 {
+    font-size: 9px;
+    line-height: 1.4;
+  }
+
+  .ls-alert-badge {
+    flex: 0 0 auto;
+    padding: 2px 6px;
+    font-size: 8px;
+  }
+
+  .ls-alert-item {
+    padding: 7px 6px;
+    margin-bottom: 6px;
+    font-size: 8px;
+  }
+
+  .ls-alert-item p,
+  .ls-text-muted,
+  .ls-notif-list {
+    font-size: 8px;
+    line-height: 1.4;
+  }
+
+  .ls-btn-green,
+  .ls-btn-outline {
+    padding: 7px 5px;
+    font-size: 8px;
+    line-height: 1.35;
+  }
+
+  .ls-notif-list li {
+    gap: 5px;
+    margin-bottom: 7px;
+  }
+}
+
+@media (max-width: 700px) {
+  .ls-layout {
+    overflow: auto;
+  }
+
+  .ls-layout > .phar-sidebar {
+    width: 64px;
+    min-height: 100vh;
+    height: auto;
+  }
+
+  .ls-layout > .phar-sidebar .phar-brand-title,
+  .ls-layout > .phar-sidebar .phar-brand-divider,
+  .ls-layout > .phar-sidebar .phar-menu-label,
+  .ls-layout > .phar-sidebar .phar-sidebar-footer-decor,
+  .ls-layout > .phar-sidebar .phar-logout-btn span {
+    display: none;
+  }
+
+  .ls-layout > .phar-sidebar .phar-menu-item {
+    justify-content: center;
+    padding: 10px 4px;
+  }
+
+  .ls-layout > .phar-sidebar .phar-menu-icon {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .ls-layout > .phar-sidebar .phar-logout-btn {
+    font-size: 14px;
+  }
+
+  .ls-main-wrapper {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .ls-body-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ls-right-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
+
+  .ls-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

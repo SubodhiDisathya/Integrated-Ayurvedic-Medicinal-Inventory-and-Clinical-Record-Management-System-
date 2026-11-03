@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 // Firebase Imports
 import { db } from '../firebase/firebase';
@@ -17,14 +16,9 @@ import {
 // CSS Files
 import './TicketCounter.css';
 import './TicketCounter_Registerpatient.css';
-
-// Images
-import logoAyurveda from '../assets/logo-top.png';
-import cornerLeaves from '../assets/corner-leaves.png';
+import SidebarTicket from '../components/Sidebar_ticket';
 
 export default function RegisterPatient() {
-  const navigate = useNavigate();
-
   // Form State
   const [formData, setFormData] = useState({
     fullName: '',
@@ -186,35 +180,7 @@ export default function RegisterPatient() {
 
   return (
     <div className="dashboard-container">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <img src={logoAyurveda} alt="Ayurveda Logo" className="brand-logo" />
-          <h2 className="brand-title">ජාතික ආයුර්වේද</h2>
-          <p className="brand-subtitle">ඖෂධ තොග හා රෝගීන් සත්කාරක කළමනාකරණය</p>
-          <span className="brand-tag">MANAGEMENT SYSTEM</span>
-        </div>
-
-        <nav className="sidebar-menu">
-          <button className="menu-item" onClick={() => navigate('/ticket-counter')}>
-            <i className="bi bi-house-door-fill"></i> මුල් පිටුව
-          </button>
-          <button className="menu-item active">
-            <i className="bi bi-person-plus"></i> රෝගී ලියාපදිංචිය
-          </button>
-          <button className="menu-item" onClick={() => navigate('/ticket-counter/records')}>
-            <i className="bi bi-file-earmark-text"></i> පැරණි රෝගීන් සහ රෝගී වාර්තා
-          </button>
-        </nav>
-
-        <div className="sidebar-footer-bg">
-          <img src={cornerLeaves} alt="" className="leaf-decor" />
-        </div>
-
-        <button className="logout-btn" onClick={() => navigate('/')}>
-          <i className="bi bi-box-arrow-left"></i> පිටවීම
-        </button>
-      </aside>
+      <SidebarTicket />
 
       {/* Main Content */}
       <main className="main-content">

@@ -1,21 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 // Firebase Imports
-import { db, auth } from '../firebase/firebase';
+import { db } from '../firebase/firebase';
 import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
 
 // CSS File Import
 import './Admin.css';
 
 // Asset Imports
-import logoEmblem from '../assets/logo-top.png';
-import cornerLeaves from '../assets/corner-leaves.png';
 import heroBanner from '../assets/Medicine.jpg';
+import SidebarAdmin from '../components/SidebarAdmin';
 
 export default function Admin() {
-  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ totalUsers: 0, doctors: 0, staff: 0, patients: 0 });
@@ -66,47 +62,10 @@ export default function Admin() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      localStorage.removeItem('user');
-      navigate('/');
-    } catch (error) {
-      console.error("පිටවීමේ දෝෂයකි:", error);
-    }
-  };
-
   return (
     <div className="admin-page-scope">
       <div className="admin-container">
-        {/* --- Left Sidebar Navigation --- */}
-        <aside className="admin-sidebar">
-          <div className="sidebar-brand">
-            <img src={logoEmblem} alt="Sri Lanka Emblem" className="brand-logo" />
-            <h2 className="brand-title">ජාතික ආයුර්වේද</h2>
-            <p className="brand-subtitle">ඖෂධ තොග හා රෝගීන් සත්කාරක කළමනාකරණය</p>
-            <div className="brand-tag-wrapper">
-              <span className="brand-tag">MANAGEMENT SYSTEM</span>
-            </div>
-          </div>
-
-          <nav className="sidebar-menu" aria-label="පරිපාලක මෙනුව">
-            <button className="menu-item active" onClick={() => navigate('/admin')}>
-              <i className="bi bi-grid-fill"></i> මුල් පිටුව
-            </button>
-            <button className="menu-item" onClick={() => navigate('/admin/dashboard')}>
-              <i className="bi bi-people-fill"></i> පරිශීලක කළමනාකරණය
-            </button>
-          </nav>
-
-          <div className="sidebar-footer-bg">
-            <img src={cornerLeaves} alt="Decor Leaves" className="leaf-decor" />
-          </div>
-
-          <button className="logout-btn" onClick={handleLogout}>
-            <i className="bi bi-box-arrow-left"></i> පිටවීම
-          </button>
-        </aside>
+        <SidebarAdmin />
 
         {/* --- Main Content Area --- */}
         <main className="admin-main">

@@ -64,7 +64,8 @@ export default function Register() {
 
       if (role === 'doctor') navigate('/doctor');
       else if (role === 'ticket_counter') navigate('/ticket-counter');
-else if (role === 'pharmacist' || role === 'staff') navigate('/pharmacy/dashboard');
+      else if (role === 'pharmacist' || role === 'staff') navigate('/pharmacy/dashboard');
+      else if (role === 'supplier') navigate('/supplier');
       else if (role === 'admin') navigate('/admin');
 
     } catch (err) {
@@ -234,6 +235,7 @@ else if (role === 'pharmacist' || role === 'staff') navigate('/pharmacy/dashboar
                     <option value="ticket_counter">ප්‍රවේශපත්‍ර කවුන්ටරය / Ticket Counter</option>
                     <option value="doctor">වෛද්‍යවරයා / Doctor</option>
                     <option value="pharmacist">ඖෂධවේදියා / Pharmacist</option>
+                    <option value="supplier">සැපයුම්කරු / Supplier</option>
                     <option value="admin">පරිපාලක / Admin</option>
                   </select>
                 </div>

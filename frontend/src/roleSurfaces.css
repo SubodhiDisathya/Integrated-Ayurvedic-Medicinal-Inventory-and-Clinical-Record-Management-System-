@@ -1,0 +1,79 @@
+.doctor-container,
+.th-container,
+.dashboard-container,
+.admin-page-scope,
+.supplier-portal,
+.ls-layout {
+  background-color: #f7f2e7 !important;
+}
+
+.doctor-container > main,
+.th-container > main,
+.dashboard-container > main,
+.admin-page-scope .admin-main,
+.admin-page-scope .doctor-main,
+.supplier-portal > main,
+.ls-layout .ls-main-wrapper {
+  background-color: #f7f2e7 !important;
+}
+
+.doctor-container > main > .content-inner,
+.dashboard-container > main > .content-inner,
+.admin-page-scope .content-inner,
+.supplier-portal .supplier-content,
+.ls-layout .ls-body-content {
+  background-color: transparent;
+}
+
+.doctor-container > main > .top-bar,
+.th-container > main > .top-bar,
+.dashboard-container > main > .top-bar,
+.admin-page-scope .top-bar,
+.supplier-portal .supplier-topbar {
+  background-color: #fffdf9 !important;
+}
+
+.doctor-container > main .stat-card,
+.doctor-container > main .card-box,
+.doctor-container > main .patients-header-card,
+.doctor-container > main .table-card,
+.doctor-container > main .patient-info-card,
+.doctor-container > main .consultation-form-card,
+.doctor-container > main .latest-visit-section,
+.th-container > main .th-left-panel,
+.th-container > main .th-right-panel,
+.th-container > main .patient-card-item,
+.dashboard-container > main .register-card,
+.dashboard-container > main .records-container-card,
+.admin-page-scope main .stat-card,
+.admin-page-scope main .card-box,
+.admin-page-scope main .admin-users-table-container,
+.supplier-portal main .supplier-panel,
+.supplier-portal main .supplier-stat-card,
+.ls-layout .ls-main-wrapper .ls-table-card,
+.ls-layout .ls-main-wrapper .ls-alert-card,
+.ls-layout .ls-main-wrapper .ls-quick-actions-card,
+.ls-layout .ls-main-wrapper .ls-notifications-card {
+  background: #fffdf9 !important;
+}
+
+.doctor-container > main .patients-header-card,
+.doctor-container > main .table-card,
+.doctor-container > main .patient-info-card,
+.doctor-container > main .consultation-form-card,
+.doctor-container > main .latest-visit-section,
+.th-container > main .th-left-panel,
+.th-container > main .th-right-panel,
+.dashboard-container > main .register-card,
+.dashboard-container > main .records-container-card,
+.admin-page-scope main .stat-card,
+.admin-page-scope main .card-box,
+.admin-page-scope main .admin-users-table-container,
+.supplier-portal main .supplier-panel,
+.supplier-portal main .supplier-stat-card,
+.ls-layout .ls-main-wrapper .ls-table-card,
+.ls-layout .ls-main-wrapper .ls-alert-card,
+.ls-layout .ls-main-wrapper .ls-quick-actions-card,
+.ls-layout .ls-main-wrapper .ls-notifications-card {
+  border-color: #e9e0cd;
+}

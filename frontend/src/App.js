@@ -20,8 +20,12 @@ import PharmacyDashboard from './pages/Pharmacy/PharmacyDashboard';
 import PharmacyPatientPrescription from './pages/Pharmacy/PharmacyPatientPrescription';
 import PharmacyInventory from './pages/Pharmacy/PharmacyInventory';
 import LowStockInventory from './pages/Pharmacy/LowStockInventory';
+import SupplierPortal from './pages/SupplierPortal';
 
 import Admin from './pages/Admin';
+import AdminCounter from './pages/Admin/AdminCounter';
+import './roleTypography.css';
+import './roleSurfaces.css';
 
 function App() {
   return (
@@ -56,8 +60,12 @@ function App() {
         <Route path="/pharmacy/prescriptions" element={<PharmacyPatientPrescription />} />
         <Route path="/pharmacy/issue" element={<PharmacyPatientPrescription />} />
 
+        {/* Supplier Portal */}
+        <Route path="/supplier" element={<SupplierPortal />} />
+
         {/* Admin Route */}
         <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/dashboard" element={<AdminCounter />} />
       </Routes>
     </BrowserRouter>
   );

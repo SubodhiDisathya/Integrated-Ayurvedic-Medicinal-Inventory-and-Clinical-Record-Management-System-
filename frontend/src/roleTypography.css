@@ -1,0 +1,202 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+
+.doctor-container > main,
+.th-container > main,
+.dashboard-container > main,
+.admin-page-scope main,
+.supplier-portal > main,
+.ls-layout .ls-main-wrapper,
+.ticket-dashboard-typography > main {
+  font-family: 'Noto Sans Sinhala', 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.doctor-container > main h1,
+.th-container > main h1,
+.dashboard-container > main h1,
+.admin-page-scope main h1,
+.supplier-portal > main h1,
+.ls-layout .ls-main-wrapper h1,
+.ticket-dashboard-typography > main h1 {
+  font-family: 'Noto Sans Sinhala', 'Poppins', sans-serif !important;
+  font-size: 32px !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+}
+
+.doctor-container > main h2,
+.th-container > main h2,
+.dashboard-container > main h2,
+.admin-page-scope main h2,
+.supplier-portal > main h2,
+.ls-layout .ls-main-wrapper h2,
+.ticket-dashboard-typography > main h2 {
+  font-family: 'Noto Sans Sinhala', 'Poppins', sans-serif !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  line-height: 1.4 !important;
+}
+
+.doctor-container > main h3,
+.th-container > main h3,
+.dashboard-container > main h3,
+.admin-page-scope main h3,
+.supplier-portal > main h3,
+.ls-layout .ls-main-wrapper h3,
+.ticket-dashboard-typography > main h3 {
+  font-family: 'Noto Sans Sinhala', 'Poppins', sans-serif !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  line-height: 1.45 !important;
+}
+
+.doctor-container > main h4,
+.th-container > main h4,
+.dashboard-container > main h4,
+.admin-page-scope main h4,
+.supplier-portal > main h4,
+.ls-layout .ls-main-wrapper h4,
+.ticket-dashboard-typography > main h4 {
+  font-family: 'Noto Sans Sinhala', 'Poppins', sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  line-height: 1.5 !important;
+}
+
+.doctor-container > main h5,
+.doctor-container > main h6,
+.th-container > main h5,
+.th-container > main h6,
+.dashboard-container > main h5,
+.dashboard-container > main h6,
+.admin-page-scope main h5,
+.admin-page-scope main h6,
+.supplier-portal > main h5,
+.supplier-portal > main h6,
+.ls-layout .ls-main-wrapper h5,
+.ls-layout .ls-main-wrapper h6,
+.ticket-dashboard-typography > main h5,
+.ticket-dashboard-typography > main h6 {
+  font-family: 'Noto Sans Sinhala', 'Poppins', sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1.5 !important;
+}
+
+.doctor-container > main p,
+.th-container > main p,
+.dashboard-container > main p,
+.admin-page-scope main p,
+.supplier-portal > main p,
+.ls-layout .ls-main-wrapper p,
+.ticket-dashboard-typography > main p {
+  font-family: 'Noto Sans Sinhala', 'Poppins', sans-serif;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+
+.doctor-container > main label,
+.th-container > main label,
+.dashboard-container > main label,
+.admin-page-scope main label,
+.supplier-portal > main label,
+.ls-layout .ls-main-wrapper label,
+.doctor-container > main th,
+.th-container > main th,
+.dashboard-container > main th,
+.admin-page-scope main th,
+.supplier-portal > main th,
+.ls-layout .ls-main-wrapper th,
+.ticket-dashboard-typography > main label,
+.ticket-dashboard-typography > main th {
+  font-family: 'Noto Sans Sinhala', 'Poppins', sans-serif;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+.doctor-container > main td,
+.th-container > main td,
+.dashboard-container > main td,
+.admin-page-scope main td,
+.supplier-portal > main td,
+.ls-layout .ls-main-wrapper td,
+.doctor-container > main input,
+.doctor-container > main select,
+.doctor-container > main textarea,
+.th-container > main input,
+.th-container > main select,
+.th-container > main textarea,
+.dashboard-container > main input,
+.dashboard-container > main select,
+.dashboard-container > main textarea,
+.admin-page-scope main input,
+.admin-page-scope main select,
+.admin-page-scope main textarea,
+.supplier-portal > main input,
+.supplier-portal > main select,
+.supplier-portal > main textarea,
+.ls-layout .ls-main-wrapper input,
+.ls-layout .ls-main-wrapper select,
+.ls-layout .ls-main-wrapper textarea,
+.ticket-dashboard-typography > main td,
+.ticket-dashboard-typography > main input,
+.ticket-dashboard-typography > main select,
+.ticket-dashboard-typography > main textarea {
+  font-family: 'Noto Sans Sinhala', 'Poppins', sans-serif;
+  font-size: 13px !important;
+}
+
+.doctor-container > main button,
+.th-container > main button,
+.dashboard-container > main button,
+.admin-page-scope main button,
+.supplier-portal > main button,
+.ls-layout .ls-main-wrapper button,
+.ticket-dashboard-typography > main button {
+  font-family: 'Noto Sans Sinhala', 'Poppins', sans-serif;
+}
+
+.doctor-container > main .hero-subtext,
+.th-container > main .hero-subtext,
+.dashboard-container > main .hero-subtext,
+.admin-page-scope main .hero-subtext,
+.supplier-portal > main .hero-subtext,
+.ls-layout .ls-main-wrapper .hero-subtext,
+.ticket-dashboard-typography > main .hero-subtext {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+.doctor-container > main .hero-tagline,
+.th-container > main .hero-tagline,
+.dashboard-container > main .hero-tagline,
+.admin-page-scope main .hero-tagline,
+.supplier-portal > main .hero-tagline,
+.ls-layout .ls-main-wrapper .hero-tagline,
+.ticket-dashboard-typography > main .hero-tagline {
+  font-size: 13px !important;
+}
+
+@media (max-width: 600px) {
+  .doctor-container > main h1,
+  .th-container > main h1,
+  .dashboard-container > main h1,
+  .admin-page-scope main h1,
+  .supplier-portal > main h1,
+  .ls-layout .ls-main-wrapper h1,
+  .ticket-dashboard-typography > main h1 {
+    font-size: 26px !important;
+  }
+
+  .doctor-container > main h2,
+  .th-container > main h2,
+  .dashboard-container > main h2,
+  .admin-page-scope main h2,
+  .supplier-portal > main h2,
+  .ls-layout .ls-main-wrapper h2,
+  .ticket-dashboard-typography > main h2 {
+    font-size: 20px !important;
+  }
+}

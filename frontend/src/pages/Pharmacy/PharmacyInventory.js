@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../../firebase/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { calculateTotalQuantity } from '../../utils/medicineQuantity';
+import { getInventoryIngredients, getInventoryQuantity, isLowStock } from '../../utils/inventoryStock';
 
 // Component & CSS Imports
 import SidebarPhar from '../../components/Sidebar_phar';
@@ -30,6 +32,7 @@ const DOSAGE_OPTIONS = [
 ];
 
 export default function PharmacyInventory() {
+  const navigate = useNavigate();
   const [inventory, setInventory] = useState([]);
   const [todaysUsage, setTodaysUsage] = useState({});
   const [loading, setLoading] = useState(true);
@@ -43,6 +46,7 @@ export default function PharmacyInventory() {
   // Form Fields
   const [medName, setMedName] = useState('');
   const [category, setCategory] = useState('');
+  const [ingredients, setIngredients] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('');
   const [minLevel, setMinLevel] = useState('');
@@ -125,6 +129,7 @@ export default function PharmacyInventory() {
       const payload = {
         name: medName,
         category: category || 'Tablet',
+        ingredients: ingredients.trim(),
         quantity: Number(quantity),
         unit: unit,
         minLevel: Number(minLevel || 10),
@@ -154,6 +159,7 @@ export default function PharmacyInventory() {
     setCurrentId(null);
     setMedName(AYURVEDIC_MEDICINES[0]);
     setCategory('Tablet');
+    setIngredients(getInventoryIngredients({ name: AYURVEDIC_MEDICINES[0] }));
     setQuantity('');
     setUnit('Tablets');
     setMinLevel('10');
@@ -166,6 +172,7 @@ export default function PharmacyInventory() {
     setCurrentId(item.id);
     setMedName(item.name || AYURVEDIC_MEDICINES[0]);
     setCategory(item.category || '');
+    setIngredients(getInventoryIngredients(item));
     setQuantity(item.quantity || '');
     setUnit(item.unit || '');
     setMinLevel(item.minLevel || '');
@@ -187,6 +194,7 @@ export default function PharmacyInventory() {
     item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.category?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const lowStockItems = inventory.filter(isLowStock);
 
   return (
     <div className="doctor-container">
@@ -205,6 +213,26 @@ export default function PharmacyInventory() {
             + නව ඖෂධයක් එක් කරන්න
           </button>
         </header>
+
+        {lowStockItems.length > 0 && (
+          <div
+            role="alert"
+            aria-live="polite"
+            style={{ margin: '12px 30px 0', padding: '14px 18px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '12px', color: '#9a3412' }}
+          >
+            <strong>අඩු තොග අනතුරු ඇඟවීම ({lowStockItems.length})</strong>
+            <p style={{ margin: '6px 0 10px' }}>
+              {lowStockItems.map((item) => `${item.name}: ${getInventoryQuantity(item)} ${item.unit || 'ඒකක'}`).join(' · ')}
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/pharmacy/low-stock')}
+              style={{ border: 0, background: 'transparent', color: '#137333', cursor: 'pointer', fontWeight: 'bold', padding: 0 }}
+            >
+              අඩු තොග ලැයිස්තුව බලන්න
+            </button>
+          </div>
+        )}
 
         <div className="content-inner" style={{ padding: '20px 30px' }}>
           <div style={{ background: '#fff', borderRadius: '16px', padding: '25px', border: '1px solid #f0eae1', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
@@ -243,11 +271,9 @@ export default function PharmacyInventory() {
                   <tbody>
                     {filteredInventory.map((item) => {
                       // 💡 FIXED: Real-time Stock is directly managed from Firestore `quantity`
-                      const currentQty = Number(item.quantity || 0);
+                      const currentQty = getInventoryQuantity(item);
                       const todayUsed = todaysUsage[item.name?.trim()] || 0;
-                      
-                      const minLvl = Number(item.minLevel || 10);
-                      const isLow = currentQty <= minLvl;
+                      const isLow = isLowStock(item);
 
                       return (
                         <tr key={item.id} style={{ borderBottom: '1px solid #f2ede4', fontSize: '14px' }}>
@@ -322,7 +348,10 @@ export default function PharmacyInventory() {
                 <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>ඖෂධයේ නම</label>
                 <select 
                   value={medName} 
-                  onChange={(e) => setMedName(e.target.value)} 
+                  onChange={(e) => {
+                    setMedName(e.target.value);
+                    setIngredients(getInventoryIngredients({ name: e.target.value }));
+                  }}
                   required 
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', background: '#fff' }}
                 >
@@ -340,6 +369,17 @@ export default function PharmacyInventory() {
                   onChange={(e) => setCategory(e.target.value)} 
                   placeholder="උදා: පෙති / සිරප්"
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }} 
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>අමුද්‍රව්‍ය</label>
+                <textarea
+                  value={ingredients}
+                  onChange={(e) => setIngredients(e.target.value)}
+                  placeholder={'එක් පේළියකට එක් අමුද්‍රව්‍යයක් ලියන්න\nඋදා: අරළු\nබුළු\nනෙල්ලි'}
+                  rows={3}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', resize: 'vertical' }}
                 />
               </div>
 

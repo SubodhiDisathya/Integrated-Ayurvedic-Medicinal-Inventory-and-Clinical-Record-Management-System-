@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../firebase/firebase';
-import { collection, onSnapshot, updateDoc, doc, deleteDoc } from 'firebase/firestore';
-import { getInventoryQuantity, getInventoryThreshold, isLowStock } from '../../utils/inventoryStock';
+import { collection, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import {
+  getInventoryIngredients,
+  getInventoryQuantity,
+  getInventoryThreshold,
+  isLowStock
+} from '../../utils/inventoryStock';
 
 import SidebarPhar from '../../components/Sidebar_phar';
 import './LowStockInventory.css';
@@ -24,6 +29,7 @@ export default function LowStockInventory() {
   const [editName, setEditName] = useState('');
   const [editStock, setEditStock] = useState('');
   const [editUnit, setEditUnit] = useState('');
+  const [editIngredients, setEditIngredients] = useState('');
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'inventory'), (snapshot) => {
@@ -41,7 +47,7 @@ export default function LowStockInventory() {
           ...data,
           id: docSnap.id,
           name,
-          ingredients: data.ingredients || 'සාම්ප්‍රදායික ඖෂධීය අමුද්‍රව්‍ය',
+          ingredients: getInventoryIngredients(data) || 'අමුද්‍රව්‍ය සඳහන් කර නැත',
           currentStock: getInventoryQuantity(data),
           threshold: getInventoryThreshold(data),
           unit: data.unit || 'ඒකක',
@@ -51,29 +57,28 @@ export default function LowStockInventory() {
         lowStockById.set(docSnap.id, isLowStock(item));
       });
 
-      if (previousLowStock.current) {
-        const newlyLowItems = list.filter((item) =>
-          lowStockById.get(item.id) && !previousLowStock.current.get(item.id)
-        );
-        if (newlyLowItems.length > 0) {
-          setNotifications((current) => [
-            ...newlyLowItems.map((item) => ({
-              id: `${item.id}-${Date.now()}`,
-              message: `${item.name}: තොගය ${item.currentStock} ${item.unit} දක්වා අඩු වී ඇත.`
-            })),
-            ...current
-          ].slice(0, 5));
+      const newlyLowItems = list.filter((item) =>
+        lowStockById.get(item.id) &&
+        (!previousLowStock.current || !previousLowStock.current.get(item.id))
+      );
+      if (newlyLowItems.length > 0) {
+        setNotifications((current) => [
+          ...newlyLowItems.map((item) => ({
+            id: `${item.id}-${Date.now()}`,
+            message: `${item.name}: තොගය ${item.currentStock} ${item.unit} දක්වා අඩු වී ඇත.`
+          })),
+          ...current
+        ].slice(0, 5));
 
-          const message = newlyLowItems.map((item) => item.name).join(', ');
-          setNotificationMessage(`${message} සඳහා අඩු තොග අනතුරු ඇඟවීමක් ඇත.`);
+        const message = newlyLowItems.map((item) => item.name).join(', ');
+        setNotificationMessage(`${message} සඳහා අඩු තොග අනතුරු ඇඟවීමක් ඇත.`);
 
-          if ('Notification' in window && window.Notification.permission === 'granted') {
-            newlyLowItems.forEach((item) => {
-              new window.Notification('අඩු තොග අනතුරු ඇඟවීම', {
-                body: `${item.name}: ඉතිරි තොගය ${item.currentStock} ${item.unit}.`
-              });
+        if ('Notification' in window && window.Notification.permission === 'granted') {
+          newlyLowItems.forEach((item) => {
+            new window.Notification('අඩු තොග අනතුරු ඇඟවීම', {
+              body: `${item.name}: ඉතිරි තොගය ${item.currentStock} ${item.unit}.`
             });
-          }
+          });
         }
       }
 
@@ -100,8 +105,9 @@ export default function LowStockInventory() {
   const handleOpenEditModal = (item) => {
     setCurrentId(item.id);
     setEditName(item.name || '');
-    setEditStock(item.currentStock || '');
+    setEditStock(item.currentStock ?? '');
     setEditUnit(item.unit || '');
+    setEditIngredients(getInventoryIngredients(item));
     setShowModal(true);
   };
 
@@ -114,12 +120,21 @@ export default function LowStockInventory() {
         await updateDoc(medRef, {
           quantity: Number(editStock),
           currentStock: Number(editStock),
-          unit: editUnit
+          unit: editUnit,
+          ingredients: editIngredients.trim()
         });
       }
 
       setInventory(inventory.map(item => 
-        item.id === currentId ? { ...item, currentStock: Number(editStock), unit: editUnit } : item
+        item.id === currentId
+          ? {
+            ...item,
+            currentStock: Number(editStock),
+            quantity: Number(editStock),
+            unit: editUnit,
+            ingredients: editIngredients.trim()
+          }
+          : item
       ));
 
       alert('ඖෂධ තොරතුරු සාර්ථකව යාවත්කාලීන කරන ලදී!');
@@ -127,22 +142,6 @@ export default function LowStockInventory() {
     } catch (error) {
       console.error("Error updating stock: ", error);
       alert('යාවත්කාලීන කිරීමේදී දෝෂයක් ඇති විය.');
-    }
-  };
-
-  // ඖෂධයක් ඉවත් කිරීම (Delete Handler)
-  const handleDeleteItem = async (id, name) => {
-    if (window.confirm(`"${name}" ඖෂධය ඉන්වෙන්ටරියෙන් ඉවත් කිරීමට අවශ්‍ය ද?`)) {
-      try {
-        if (typeof id === 'string' && id.length > 5) {
-          await deleteDoc(doc(db, 'inventory', id));
-        }
-        setInventory(inventory.filter(item => item.id !== id));
-        alert('ඖෂධය සාර්ථකව ඉවත් කරන ලදී.');
-      } catch (error) {
-        console.error("Error deleting document: ", error);
-        alert('ඉවත් කිරීමේදී දෝෂයක් ඇති විය.');
-      }
     }
   };
 
@@ -286,14 +285,6 @@ export default function LowStockInventory() {
                             >
                               යාවත්කාලීන
                             </button>
-                            <button 
-                              className="ls-btn-action" 
-                              onClick={() => handleDeleteItem(med.id, med.name)}
-                              title="ඉවත් කරන්න"
-                              style={{ background: '#fce8e6', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', color: '#c5221f', fontSize: '14px' }}
-                            >
-                              🗑️
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -408,6 +399,17 @@ export default function LowStockInventory() {
                   onChange={(e) => setEditUnit(e.target.value)} 
                   required 
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }} 
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>අමුද්‍රව්‍ය (එක් පේළියකට එකක්)</label>
+                <textarea
+                  value={editIngredients}
+                  onChange={(e) => setEditIngredients(e.target.value)}
+                  rows={4}
+                  placeholder={'අරළු\nබුළු\nනෙල්ලි'}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', resize: 'vertical' }}
                 />
               </div>
 

@@ -4,7 +4,7 @@ import { db } from '../firebase/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 
 // නිවැරදි ෆෝල්ඩර මාර්ගය (Path) යොදා Sidebar එක ඉම්පෝට් කිරීම[cite: 6]
-import SidebarTicket from '../components/Sidebar_ticket'; 
+import SidebarTicket from '../components/Sidebar_ticket';
 
 import bannerHero from '../assets/banner-hero.jpeg';
 
@@ -74,7 +74,7 @@ export default function TicketCounter() {
   }, []);
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f7f2e7', width: '100vw', overflowX: 'hidden', fontFamily: 'sans-serif' }}>
+    <div className="ticket-dashboard-typography" style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f7f2e7', width: '100vw', overflowX: 'hidden', fontFamily: 'sans-serif' }}>
       
       {/* --- Sidebar Component --- */}
       <SidebarTicket />
