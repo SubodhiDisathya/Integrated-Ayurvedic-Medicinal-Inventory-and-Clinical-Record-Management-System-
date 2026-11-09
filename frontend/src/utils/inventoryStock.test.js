@@ -1,5 +1,6 @@
 import {
   getInventoryIngredients,
+  getInventoryItemCode,
   getInventoryQuantity,
   getInventoryThreshold,
   isLowStock
@@ -23,6 +24,11 @@ describe('inventory stock helpers', () => {
     expect(isLowStock({ quantity: 10 })).toBe(false);
     expect(isLowStock({ quantity: 11 })).toBe(false);
     expect(isLowStock({ quantity: 0, minLevel: 0 })).toBe(false);
+  });
+
+  test('formats compact collection-prefixed inventory numbers', () => {
+    expect(getInventoryItemCode('MED', 1)).toBe('MED-1');
+    expect(getInventoryItemCode('ING', 12)).toBe('ING-12');
   });
 
   test('reads ingredient fields without substituting the medicine category', () => {

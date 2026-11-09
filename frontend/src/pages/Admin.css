@@ -173,57 +173,6 @@
   background-color: #f8fafc;
 }
 
-.admin-page-scope .top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 28px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.admin-page-scope .welcome-msg {
-  font-family: 'Inter', sans-serif;
-  font-weight: 600 !important;
-  color: #065f46 !important;
-  font-size: 0.95rem !important;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.admin-page-scope .top-bar-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.admin-page-scope .notification-icon, 
-.admin-page-scope .user-profile {
-  font-family: 'Inter', sans-serif;
-  background: transparent;
-  border: none;
-  font-size: 1rem !important;
-  color: #065f46 !important;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500 !important;
-  position: relative;
-}
-
-.admin-page-scope .notification-icon .badge {
-  position: absolute;
-  top: -4px;
-  right: -6px;
-  background-color: #ef4444;
-  color: #ffffff;
-  font-size: 0.6rem !important;
-  padding: 2px 5px;
-  border-radius: 50%;
-}
-
 .admin-page-scope .content-inner {
   padding: 24px 28px;
 }

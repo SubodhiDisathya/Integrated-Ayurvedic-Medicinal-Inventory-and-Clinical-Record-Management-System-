@@ -10,6 +10,7 @@ import './Admin.css';
 // Asset Imports
 import heroBanner from '../assets/Medicine.jpg';
 import SidebarAdmin from '../components/SidebarAdmin';
+import RoleTopbar from '../components/RoleTopbar';
 
 export default function Admin() {
   const [users, setUsers] = useState([]);
@@ -69,22 +70,7 @@ export default function Admin() {
 
         {/* --- Main Content Area --- */}
         <main className="admin-main">
-          {/* Top Header Bar */}
-          <header className="top-bar">
-            <div className="welcome-msg">
-              <span className="leaf-icon">🍃</span> ඔබට සුභ දවසක්!
-            </div>
-            <div className="top-bar-actions">
-              <button className="notification-icon" aria-label="දැනුම්දීම්">
-                <i className="bi bi-bell"></i>
-                <span className="badge">1</span>
-              </button>
-              <button className="user-profile">
-                <i className="bi bi-shield-lock-fill"></i>
-                <span>පරිපාලක</span>
-              </button>
-            </div>
-          </header>
+          <RoleTopbar roleLabel="පරිපාලක" notificationCount={1} />
 
           <div className="content-inner">
             {/* --- Hero Banner Section --- */}

@@ -1,14 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&family=Poppins:wght@400;500;600;700&display=swap');
-
 .phar-sidebar {
   width: 270px;
   height: 100vh;
-  /* Premium Ayurvedic Gradient Dark Background */
   background: linear-gradient(180deg, #0e3320 0%, #16462d 50%, #0d2a1b 100%);
   color: #ffffff;
   display: flex;
   flex-direction: column;
-  padding: 22px 16px;
+  padding: 20px 14px;
   position: relative;
   box-shadow: 4px 0 18px rgba(0, 0, 0, 0.25);
   font-family: 'Noto Sans Sinhala', 'Poppins', sans-serif;
@@ -27,10 +24,10 @@
 
 .phar-logo-container {
   background: rgba(255, 255, 255, 0.05);
-  padding: 8px;
+  padding: 6px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -38,13 +35,13 @@
 }
 
 .phar-brand-logo {
-  width: 58px;
-  height: 58px;
+  width: 50px;
+  height: 50px;
   object-fit: contain;
 }
 
 .phar-brand-title {
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 700;
   color: #ffffff;
   margin: 0 0 2px 0;
@@ -53,9 +50,9 @@
 }
 
 .phar-brand-subtitle {
-  font-size: 10.5px;
+  font-size: 10px;
   color: #a7f3d0;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   opacity: 0.9;
 }
 
@@ -63,9 +60,9 @@
   background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(16, 185, 129, 0.1));
   color: #6ee7b7;
   border: 1px solid rgba(110, 231, 183, 0.3);
-  font-size: 8.5px;
+  font-size: 8px;
   font-weight: 700;
-  padding: 3px 10px;
+  padding: 2px 8px;
   border-radius: 12px;
   letter-spacing: 1.2px;
   text-transform: uppercase;
@@ -74,7 +71,7 @@
 .phar-brand-divider {
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
-  margin: 16px 0 12px 0;
+  margin: 12px 0 10px 0;
   width: 100%;
 }
 
@@ -82,21 +79,20 @@
 .phar-sidebar-menu {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   z-index: 2;
-  margin-top: 4px;
 }
 
 .phar-menu-item {
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 11px 16px;
+  padding: 10px 14px;
   background: transparent;
   border: none;
   border-radius: 10px;
   color: #e2e8f0;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   text-align: left;
@@ -106,9 +102,13 @@
 }
 
 .phar-menu-icon {
-  font-size: 18px;
+  font-size: 17px;
   margin-right: 12px;
   color: #a7f3d0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
   transition: transform 0.2s ease;
 }
 
@@ -132,13 +132,13 @@
 }
 
 .phar-menu-item.active .phar-menu-icon {
-  color: #facc15; /* Golden Yellow Accent for Active Icon */
+  color: #facc15;
 }
 
 .phar-menu-item.active::before {
   content: '';
   position: absolute;
-  left: -16px;
+  left: -14px;
   top: 6px;
   bottom: 6px;
   width: 5px;
@@ -151,9 +151,9 @@
 /* Bottom Decor Leaves */
 .phar-sidebar-footer-decor {
   position: absolute;
-  bottom: 65px;
-  left: -12px;
-  width: 140px;
+  bottom: 60px;
+  left: -10px;
+  width: 130px;
   pointer-events: none;
   z-index: 1;
   opacity: 0.9;
@@ -179,7 +179,7 @@
   border: 1px solid rgba(239, 68, 68, 0.25);
   border-radius: 10px;
   color: #fca5a5;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   z-index: 2;

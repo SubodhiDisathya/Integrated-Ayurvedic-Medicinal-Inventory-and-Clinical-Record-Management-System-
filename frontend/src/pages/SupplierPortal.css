@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
-
 .supplier-portal {
   --supplier-green: #075b3b;
   --supplier-dark-green: #06452f;
@@ -175,79 +173,6 @@
 .supplier-main {
   min-width: 0;
   flex: 1;
-}
-
-.supplier-topbar {
-  position: sticky;
-  z-index: 2;
-  top: 0;
-  display: flex;
-  min-height: 66px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 32px;
-  border-bottom: 1px solid #e8ece8;
-  background: rgba(255, 255, 255, 0.97);
-}
-
-.supplier-topbar-title,
-.supplier-topbar-account {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.supplier-topbar-title {
-  color: var(--supplier-dark-green);
-  font-size: 14px;
-}
-
-.supplier-welcome {
-  gap: 8px;
-  color: #0f3d27;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.supplier-welcome > span {
-  font-size: 18px;
-}
-
-.supplier-topbar-title > i {
-  font-size: 20px;
-}
-
-.supplier-topbar-account {
-  position: relative;
-  gap: 9px;
-  color: #30453a;
-  font-size: 12px;
-}
-
-.supplier-topbar-account > .bi-bell-fill {
-  margin-right: 5px;
-  color: #315440;
-}
-
-.supplier-topbar-account > .bi-person-circle {
-  color: var(--supplier-green);
-  font-size: 19px;
-}
-
-.supplier-notification-count {
-  position: absolute;
-  top: -8px;
-  left: 10px;
-  display: grid;
-  min-width: 16px;
-  height: 16px;
-  place-items: center;
-  border-radius: 10px;
-  background: #ef4444;
-  color: #fff;
-  font-family: 'Poppins', sans-serif;
-  font-size: 9px;
-  font-weight: 700;
 }
 
 .supplier-content {
@@ -559,7 +484,7 @@
   .supplier-side-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .supplier-content { padding: 22px; }
   .supplier-hero { min-height: 230px; }
-  .supplier-topbar { padding: 14px 22px; }
+
 }
 
 @media (max-width: 600px) {
@@ -581,8 +506,7 @@
   .supplier-logout-button { min-height: 40px; padding: 8px 4px; font-size: 0; }
   .supplier-logout-button i { font-size: 16px; }
   .supplier-sidebar-leaves { width: 85px; left: -15px; }
-  .supplier-topbar { min-height: 50px; padding: 0 12px; }
-  .supplier-topbar-account { gap: 6px; font-size: 10px; }
+
   .supplier-content { padding: 10px; }
   .supplier-hero { min-height: 170px; background-position: 58% center; }
   .supplier-hero-copy { max-width: 75%; padding: 15px; }

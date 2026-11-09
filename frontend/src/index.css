@@ -1,10 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700&display=swap');
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Abhaya Libre', serif;
+  font-size: 17px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body *:not(.bi):not([class*=' bi-']):not(code):not(pre) {
+  font-family: 'Abhaya Libre', serif !important;
+}
+
+#root {
+  font-size: 17px;
+}
+
+#root :where(h1, h2, h3, h4, h5, h6) {
+  font-family: 'Abhaya Libre', serif !important;
+  font-weight: 700 !important;
+  line-height: 1.35;
+}
+
+#root h1 {
+  font-size: 36px !important;
+}
+
+#root h2 {
+  font-size: 28px !important;
+}
+
+#root h3 {
+  font-size: 23px !important;
+}
+
+#root h4 {
+  font-size: 20px !important;
+}
+
+#root :where(h5, h6) {
+  font-size: 18px !important;
+}
+
+#root :where(p, li) {
+  font-size: 17px !important;
+  line-height: 1.6;
+}
+
+#root :where(label, th) {
+  font-size: 16px !important;
+  font-weight: 600;
+}
+
+#root :where(td, input, select, textarea, button) {
+  font-size: 16px !important;
+}
+
+#root :where(small) {
+  font-size: 14px !important;
+  font-weight: 400;
+}
+
+#root :where(strong, b) {
+  font-weight: 700 !important;
+}
+
+@media (max-width: 600px) {
+  #root h1 {
+    font-size: 30px !important;
+  }
+
+  #root h2 {
+    font-size: 25px !important;
+  }
+
+  #root h3 {
+    font-size: 21px !important;
+  }
+
+  #root h4 {
+    font-size: 19px !important;
+  }
 }
 
 :root {

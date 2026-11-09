@@ -152,55 +152,6 @@
   background-color: #f4f6f8;
 }
 
-.admin-page-scope .top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 32px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.admin-page-scope .welcome-msg {
-  font-weight: 700 !important;
-  color: #0b4d3c !important;
-  font-size: 1rem !important;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.admin-page-scope .top-bar-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.admin-page-scope .notification-icon, 
-.admin-page-scope .user-profile {
-  background: transparent;
-  border: none;
-  font-size: 1.1rem !important;
-  color: #0b4d3c !important;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600 !important;
-  position: relative;
-}
-
-.admin-page-scope .notification-icon .badge {
-  position: absolute;
-  top: -4px;
-  right: -6px;
-  background-color: #e53e3e;
-  color: #ffffff;
-  font-size: 0.65rem !important;
-  padding: 2px 5px;
-  border-radius: 50%;
-}
-
 .admin-page-scope .content-inner {
   padding: 28px 32px;
 }

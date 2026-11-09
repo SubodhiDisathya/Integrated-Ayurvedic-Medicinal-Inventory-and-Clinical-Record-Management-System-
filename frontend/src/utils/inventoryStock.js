@@ -48,3 +48,6 @@ export const getInventoryIngredients = (item = {}) => {
 
 export const isLowStock = (item) =>
   getInventoryQuantity(item) < getInventoryThreshold(item);
+
+export const getInventoryItemCode = (prefix, number) =>
+  `${prefix}-${number}`;

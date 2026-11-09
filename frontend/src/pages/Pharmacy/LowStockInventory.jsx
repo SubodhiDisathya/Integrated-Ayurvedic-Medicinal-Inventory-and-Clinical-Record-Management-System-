@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../firebase/firebase';
 import { collection, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { ensureInventoryItemCode, getHighestInventoryItemNumber, isInventoryItemCode } from '../../utils/inventoryCodes';
 import {
   getInventoryIngredients,
   getInventoryQuantity,
@@ -31,11 +32,57 @@ export default function LowStockInventory() {
   const [editUnit, setEditUnit] = useState('');
   const [editIngredients, setEditIngredients] = useState('');
 
+  // ඖෂධවල නම සහ ඔබ ඉල්ලූ මුල් සිංහල අමුද්‍රව්‍ය අනුව නිවැරදි විස්තර ලබාදෙන Helper Function එක
+  const getCustomInventoryDetails = (medicineName, originalIngredients, originalExpiry) => {
+    const name = (medicineName || '').trim();
+    
+    if (name.includes('ජීවලේප ආලේපනය')) {
+      return {
+        ingredients: 'පාවට්ටා කොළ, ආඩතෝඩා කොළ, වෙනිවෙල් ගැට, කහ, පොල්තෙල්',
+        expiryDate: 'ජනවාරි 05, 2027'
+      };
+    }
+    if (name.includes('අරළු පෙති')) {
+      return {
+        ingredients: 'අරළු ගෙඩි',
+        expiryDate: 'දෙසැම්බර් 07, 2026'
+      };
+    }
+    if (name.includes('බුද්ධරාජ කල්ක')) {
+      return {
+        ingredients: 'අරළු ගෙඩි, බුළු ගෙඩි, නෙල්ලි ගෙඩි, ඉඟුරු, ගම්මිරිස්, තිප්පිලි',
+        expiryDate: 'මාර්තු 08, 2027'
+      };
+    }
+    if (name.includes('ත්‍රිඵලා පෙති')) {
+      return {
+        ingredients: 'අරළු ගෙඩි, බුළු ගෙඩි, නෙල්ලි ගෙඩි',
+        expiryDate: 'ජනවාරි 05, 2027'
+      };
+    }
+    if (name.includes('සරස්වතාරිෂ්ටය')) {
+      return {
+        ingredients: 'වල්මි මුල්, වදකහ, ඉඟුරු, තිප්පිලි',
+        expiryDate: 'මාර්තු 08, 2027'
+      };
+    }
+
+    return {
+      ingredients: originalIngredients || 'අමුද්‍රව්‍ය සඳහන් කර නැත',
+      expiryDate: originalExpiry || '—'
+    };
+  };
+
   useEffect(() => {
+    // Real-time listener using onSnapshot
     const unsubscribe = onSnapshot(collection(db, 'inventory'), (snapshot) => {
       const list = [];
       const seenNames = new Set();
       const lowStockById = new Map();
+      const minimumMedicineNumber = getHighestInventoryItemNumber(
+        snapshot.docs.map((itemDoc) => itemDoc.data()),
+        'MED'
+      );
 
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
@@ -43,16 +90,26 @@ export default function LowStockInventory() {
         if (!name || seenNames.has(name)) return;
 
         seenNames.add(name);
+
+        const customDetails = getCustomInventoryDetails(name, getInventoryIngredients(data), data.expiryDate);
+
         const item = {
           ...data,
           id: docSnap.id,
+          itemCode: isInventoryItemCode('MED', data.itemCode) ? data.itemCode : '...',
           name,
-          ingredients: getInventoryIngredients(data) || 'අමුද්‍රව්‍ය සඳහන් කර නැත',
+          ingredients: customDetails.ingredients,
           currentStock: getInventoryQuantity(data),
           threshold: getInventoryThreshold(data),
           unit: data.unit || 'ඒකක',
-          expiryDate: data.expiryDate || '—'
+          expiryDate: customDetails.expiryDate
         };
+
+        if (!isInventoryItemCode('MED', data.itemCode)) {
+          ensureInventoryItemCode(db, docSnap.ref, 'MED', minimumMedicineNumber).catch((error) => {
+            console.error('Error assigning medicine inventory code:', error);
+          });
+        }
         list.push(item);
         lowStockById.set(docSnap.id, isLowStock(item));
       });
@@ -107,35 +164,26 @@ export default function LowStockInventory() {
     setEditName(item.name || '');
     setEditStock(item.currentStock ?? '');
     setEditUnit(item.unit || '');
-    setEditIngredients(getInventoryIngredients(item));
+    setEditIngredients(item.ingredients);
     setShowModal(true);
   };
 
-  // යාවත්කාලීන කිරීම සුරැකීම (Update Handler)
+  // යාවත්කාලීන කිරීම සුරැකීම (Update Handler) - Vuguruwe neza ngo ikore
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     try {
       if (currentId && typeof currentId === 'string' && currentId.length > 5) {
         const medRef = doc(db, 'inventory', currentId);
+        const newStockVal = Number(editStock);
+        
         await updateDoc(medRef, {
-          quantity: Number(editStock),
-          currentStock: Number(editStock),
+          quantity: newStockVal,
+          currentStock: newStockVal,
+          stock: newStockVal,
           unit: editUnit,
           ingredients: editIngredients.trim()
         });
       }
-
-      setInventory(inventory.map(item => 
-        item.id === currentId
-          ? {
-            ...item,
-            currentStock: Number(editStock),
-            quantity: Number(editStock),
-            unit: editUnit,
-            ingredients: editIngredients.trim()
-          }
-          : item
-      ));
 
       alert('ඖෂධ තොරතුරු සාර්ථකව යාවත්කාලීන කරන ලදී!');
       setShowModal(false);
@@ -254,11 +302,11 @@ export default function LowStockInventory() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredInventory.map((med, idx) => {
+                  {filteredInventory.map((med) => {
                     const isLow = isLowStock(med);
                     return (
-                      <tr key={med.id || idx}>
-                        <td>{idx + 1}</td>
+                      <tr key={med.id}>
+                        <td>{med.itemCode}</td>
                         <td>
                           <strong>{med.name}</strong>
                         </td>
@@ -328,7 +376,7 @@ export default function LowStockInventory() {
               <button className="ls-btn-green" onClick={() => navigate('/pharmacy/inventory')}>
                 <i className="bi bi-plus-lg"></i> නව ඖෂධයක් එක් කරන්න
               </button>
-              <button className="ls-btn-outline">
+              <button className="ls-btn-outline" onClick={() => navigate('/pharmacy/inventory?tab=ingredients')}>
                 <i className="bi bi-list-nested"></i> අමුද්‍රව්‍ය ලැයිස්තුව බලන්න
               </button>
               <button className="ls-btn-outline">

@@ -6,6 +6,7 @@ import { auth, db } from '../firebase/firebase';
 import logoTop from '../assets/logo-top.png';
 import bannerHero from '../assets/supplier-hero.png';
 import cornerLeaves from '../assets/corner-leaves.png';
+import RoleTopbar from '../components/RoleTopbar';
 import './SupplierPortal.css';
 
 const formatDate = (value) => {
@@ -151,18 +152,7 @@ export default function SupplierPortal() {
       </aside>
 
       <main className="supplier-main">
-        <header className="supplier-topbar">
-          <div className="supplier-topbar-title supplier-welcome">
-            <span aria-hidden="true">🍃</span>
-            <strong>ඔබට සුභ දවසක්!</strong>
-          </div>
-          <div className="supplier-topbar-account">
-            <i className="bi bi-bell-fill" aria-hidden="true" />
-            <span className="supplier-notification-count">{pendingCount}</span>
-            <i className="bi bi-person-circle" aria-hidden="true" />
-            <span>{supplierName}</span>
-          </div>
-        </header>
+        <RoleTopbar roleLabel={supplierName} notificationCount={pendingCount} />
 
         <div className="supplier-content" id="dashboard">
           {error && <div className="supplier-error" role="alert">{error}</div>}

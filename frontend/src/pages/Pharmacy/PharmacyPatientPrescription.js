@@ -185,17 +185,17 @@ export default function PharmacyPatientPrescription() {
       <main className="doctor-main">
         <header className="top-bar">
           <div className="welcome-msg">
-            <span className="leaf-icon">🍃</span> Pharmacy Dispensing Dashboard
+            <span className="leaf-icon">🍃</span> ඖෂධ නිකුත් කිරීමේ පුවරුව
           </div>
           <button className="back-btn" onClick={() => navigate('/pharmacy/dashboard')}>
-            ⬅ Back to Dashboard
+            ⬅ ප්‍රධාන පුවරුවට ආපසු
           </button>
         </header>
 
         <div className="content-inner">
           <div className="card-box" style={{ width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
-              <h3><span className="bar-icon">|</span> Pending Prescriptions (Today Only)</h3>
+              <h3><span className="bar-icon">|</span> අද නිකුත් කිරීමට ඇති බෙහෙත් තුණ්ඩු</h3>
               
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {categories.map((cat, idx) => (
@@ -214,14 +214,14 @@ export default function PharmacyPatientPrescription() {
                       transition: 'all 0.3s ease'
                     }}
                   >
-                    {cat === 'All' ? 'All' : cat}
+                    {cat === 'All' ? 'සියල්ල' : cat}
                   </button>
                 ))}
               </div>
             </div>
 
             {loading ? (
-              <p className="loading-text">Loading data...</p>
+              <p className="loading-text">දත්ත පූරණය වෙමින් පවතී...</p>
             ) : filteredPrescriptions.length > 0 ? (
               <div className="prescription-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
                 {filteredPrescriptions.map((item) => {
@@ -280,14 +280,14 @@ export default function PharmacyPatientPrescription() {
                           transition: 'background 0.3s ease'
                         }}
                       >
-                        {allChecked ? '✅ Complete Issuing' : '⏳ Select All Medicines'}
+                        {allChecked ? '✅ නිකුත් කිරීම සම්පූර්ණ කරන්න' : '⏳ සියලුම ඖෂධ තෝරන්න'}
                       </button>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>No prescriptions to issue today.</p>
+              <p style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>අද නිකුත් කිරීමට බෙහෙත් තුණ්ඩු නොමැත.</p>
             )}
           </div>
         </div>

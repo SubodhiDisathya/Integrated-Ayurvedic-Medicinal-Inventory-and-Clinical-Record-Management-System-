@@ -1,0 +1,101 @@
+.role-topbar {
+  position: sticky;
+  z-index: 5;
+  top: 0;
+  display: flex;
+  min-height: 88px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 2px 2px 0;
+  padding: 14px 40px;
+  border: 1px solid #e8e4da;
+  border-radius: 12px;
+  background: #fffdf9;
+  box-shadow: 0 3px 12px rgba(31, 48, 37, 0.08);
+  color: #075b3b;
+}
+
+.role-topbar-welcome,
+.role-topbar-actions,
+.role-topbar-profile {
+  display: flex;
+  align-items: center;
+}
+
+.role-topbar-welcome {
+  gap: 12px;
+  font-size: 19px !important;
+}
+
+.role-topbar-welcome > span {
+  font-size: 22px !important;
+}
+
+.role-topbar-actions {
+  gap: 30px;
+}
+
+.role-topbar-notifications {
+  position: relative;
+  display: grid;
+  width: 34px;
+  height: 38px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #075b3b;
+  cursor: pointer;
+}
+
+.role-topbar-notifications > i {
+  font-size: 20px;
+}
+
+.role-topbar-badge {
+  position: absolute;
+  top: -1px;
+  right: -5px;
+  display: grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff;
+  font-size: 12px !important;
+  font-weight: 700;
+}
+
+.role-topbar-profile {
+  gap: 9px;
+  color: #075b3b;
+  font-size: 18px !important;
+  font-weight: 600;
+}
+
+.role-topbar-profile > i {
+  font-size: 21px;
+}
+
+@media (max-width: 600px) {
+  .role-topbar {
+    min-height: 64px;
+    padding: 10px 16px;
+  }
+
+  .role-topbar-welcome {
+    gap: 7px;
+    font-size: 16px !important;
+  }
+
+  .role-topbar-actions {
+    gap: 16px;
+  }
+
+  .role-topbar-profile {
+    gap: 6px;
+    font-size: 15px !important;
+  }
+}

@@ -28,7 +28,7 @@ export default function Sidebar_phar() {
     { 
       path: '/pharmacy/issue', 
       label: 'ඖෂධ නිකුත් කිරීම', 
-      icon: 'bi-capsule-capsule' 
+      icon: 'bi-capsule' 
     },
   ];
 

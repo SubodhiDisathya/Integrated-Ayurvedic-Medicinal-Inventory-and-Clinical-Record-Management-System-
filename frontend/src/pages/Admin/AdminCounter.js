@@ -10,6 +10,7 @@ import './AdminCounter.css';
 // Asset Imports
 import heroBanner from '../../assets/Medicine.jpg';
 import SidebarAdmin from '../../components/SidebarAdmin';
+import RoleTopbar from '../../components/RoleTopbar';
 
 export default function AdminCounter() {
   const [users, setUsers] = useState([]);
@@ -69,22 +70,7 @@ export default function AdminCounter() {
 
         {/* --- Main Content Area --- */}
         <main className="doctor-main">
-          {/* Top Header Bar */}
-          <header className="top-bar">
-            <div className="welcome-msg">
-              <span className="leaf-icon">🍃</span> ආයුබෝවන්, පරිපාලකතුමා!
-            </div>
-            <div className="top-bar-actions">
-              <button className="notification-icon" aria-label="දැනුම්දීම්">
-                <i className="bi bi-bell"></i>
-                <span className="badge">1</span>
-              </button>
-              <button className="user-profile">
-                <i className="bi bi-shield-lock-fill"></i>
-                <span>පරිපාලක ගිණුම</span>
-              </button>
-            </div>
-          </header>
+          <RoleTopbar roleLabel="පරිපාලක" notificationCount={1} />
 
           <div className="content-inner">
             {/* --- Hero Banner Section --- */}

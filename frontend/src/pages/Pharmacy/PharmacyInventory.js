@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../../firebase/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { calculateTotalQuantity } from '../../utils/medicineQuantity';
+import { ensureInventoryItemCode, getHighestInventoryItemNumber, isInventoryItemCode } from '../../utils/inventoryCodes';
 import { getInventoryIngredients, getInventoryQuantity, isLowStock } from '../../utils/inventoryStock';
 
 // Component & CSS Imports
@@ -33,10 +34,15 @@ const DOSAGE_OPTIONS = [
 
 export default function PharmacyInventory() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [inventory, setInventory] = useState([]);
+  const [ingredientsInventory, setIngredientsInventory] = useState([]);
   const [todaysUsage, setTodaysUsage] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState(
+    new URLSearchParams(location.search).get('tab') === 'ingredients' ? 'ingredients' : 'medicines'
+  );
   
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -51,12 +57,22 @@ export default function PharmacyInventory() {
   const [unit, setUnit] = useState('');
   const [minLevel, setMinLevel] = useState('');
   const [dosageOption, setDosageOption] = useState('');
+  const [showIngredientModal, setShowIngredientModal] = useState(false);
+  const [editingIngredientId, setEditingIngredientId] = useState(null);
+  const [ingredientName, setIngredientName] = useState('');
+  const [ingredientQuantity, setIngredientQuantity] = useState('');
+  const [ingredientUnit, setIngredientUnit] = useState('');
+  const [ingredientMinLevel, setIngredientMinLevel] = useState('10');
 
   useEffect(() => {
     // 1. Inventory Real-time Listener
     const unsubInventory = onSnapshot(collection(db, 'inventory'), (snapshot) => {
       const list = [];
       const seenNames = new Set();
+      const minimumMedicineNumber = getHighestInventoryItemNumber(
+        snapshot.docs.map((itemDoc) => itemDoc.data()),
+        'MED'
+      );
 
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
@@ -64,7 +80,13 @@ export default function PharmacyInventory() {
 
         if (trimmedName && !seenNames.has(trimmedName)) {
           seenNames.add(trimmedName);
-          list.push({ id: docSnap.id, ...data });
+          const itemCode = isInventoryItemCode('MED', data.itemCode) ? data.itemCode : '...';
+          list.push({ id: docSnap.id, ...data, itemCode });
+          if (!isInventoryItemCode('MED', data.itemCode)) {
+            ensureInventoryItemCode(db, docSnap.ref, 'MED', minimumMedicineNumber).catch((error) => {
+              console.error('Error assigning medicine inventory code:', error);
+            });
+          }
         }
       });
 
@@ -75,7 +97,26 @@ export default function PharmacyInventory() {
       setLoading(false);
     });
 
-    // 2. Prescriptions Usage Real-time Listener (Only for Displaying Today's Issued Badge)
+    const unsubIngredients = onSnapshot(collection(db, 'ingredients'), (snapshot) => {
+      const minimumIngredientNumber = getHighestInventoryItemNumber(
+        snapshot.docs.map((itemDoc) => itemDoc.data()),
+        'ING'
+      );
+      setIngredientsInventory(snapshot.docs.map((ingredientDoc) => {
+        const data = ingredientDoc.data();
+        const itemCode = isInventoryItemCode('ING', data.itemCode) ? data.itemCode : '...';
+        if (!isInventoryItemCode('ING', data.itemCode)) {
+          ensureInventoryItemCode(db, ingredientDoc.ref, 'ING', minimumIngredientNumber).catch((error) => {
+            console.error('Error assigning ingredient inventory code:', error);
+          });
+        }
+        return { id: ingredientDoc.id, ...data, itemCode };
+      }));
+    }, (error) => {
+      console.error('Error fetching ingredient inventory:', error);
+    });
+
+    // Prescriptions Usage Real-time Listener (Only for Displaying Today's Issued Badge)
     const unsubPrescriptions = onSnapshot(collection(db, 'pharmacy_prescriptions'), (snapshot) => {
       const usageMap = {};
       const today = new Date();
@@ -114,6 +155,7 @@ export default function PharmacyInventory() {
 
     return () => {
       unsubInventory();
+      unsubIngredients();
       unsubPrescriptions();
     };
   }, []);
@@ -143,7 +185,8 @@ export default function PharmacyInventory() {
         alert('ඖෂධ තොරතුරු සාර්ථකව යාවත්කාලීන කරන ලදී!');
       } else {
         payload.createdAt = serverTimestamp();
-        await addDoc(collection(db, 'inventory'), payload);
+        const medicineRef = doc(collection(db, 'inventory'));
+        await ensureInventoryItemCode(db, medicineRef, 'MED', getHighestInventoryItemNumber(inventory, 'MED'), payload);
         alert('නව ඖෂධය සාර්ථකව එක් කරන ලදී!');
       }
 
@@ -151,6 +194,62 @@ export default function PharmacyInventory() {
     } catch (error) {
       console.error("Error saving medicine: ", error);
       alert('දෝෂයක් සිදු විය.');
+    }
+  };
+
+  const handleIngredientSubmit = async (e) => {
+    e.preventDefault();
+    if (!ingredientName.trim() || ingredientQuantity === '' || !ingredientUnit.trim()) {
+      alert('කරුණාකර අමුද්‍රව්‍යයේ නම, ප්‍රමාණය සහ ඒකකය ඇතුළත් කරන්න.');
+      return;
+    }
+
+    try {
+      const payload = {
+        name: ingredientName.trim(),
+        quantity: Number(ingredientQuantity),
+        unit: ingredientUnit.trim(),
+        minLevel: Number(ingredientMinLevel || 10),
+        updatedAt: serverTimestamp()
+      };
+
+      if (editingIngredientId) {
+        await updateDoc(doc(db, 'ingredients', editingIngredientId), payload);
+      } else {
+        const ingredientRef = doc(collection(db, 'ingredients'));
+        payload.createdAt = serverTimestamp();
+        await ensureInventoryItemCode(
+          db,
+          ingredientRef,
+          'ING',
+          getHighestInventoryItemNumber(ingredientsInventory, 'ING'),
+          payload
+        );
+      }
+
+      setShowIngredientModal(false);
+    } catch (error) {
+      console.error('Error saving ingredient inventory item:', error);
+      alert('අමුද්‍රව්‍ය තොගය සුරැකීමේදී දෝෂයක් ඇති විය.');
+    }
+  };
+
+  const handleOpenIngredientModal = (item = null) => {
+    setEditingIngredientId(item?.id || null);
+    setIngredientName(item?.name || '');
+    setIngredientQuantity(item?.quantity ?? '');
+    setIngredientUnit(item?.unit || '');
+    setIngredientMinLevel(item?.minLevel ?? '10');
+    setShowIngredientModal(true);
+  };
+
+  const handleDeleteIngredient = async (id) => {
+    if (!window.confirm('මෙම අමුද්‍රව්‍ය තොගය මකා දැමීමට ඔබට විශ්වාසද?')) return;
+    try {
+      await deleteDoc(doc(db, 'ingredients', id));
+    } catch (error) {
+      console.error('Error deleting ingredient inventory item:', error);
+      alert('අමුද්‍රව්‍ය තොගය මකා දැමීමේදී දෝෂයක් ඇති විය.');
     }
   };
 
@@ -192,7 +291,12 @@ export default function PharmacyInventory() {
 
   const filteredInventory = inventory.filter(item => 
     item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category?.toLowerCase().includes(searchTerm.toLowerCase())
+    item.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.itemCode?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const filteredIngredients = ingredientsInventory.filter((item) =>
+    item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.itemCode?.toLowerCase().includes(searchTerm.toLowerCase())
   );
   const lowStockItems = inventory.filter(isLowStock);
 
@@ -207,10 +311,10 @@ export default function PharmacyInventory() {
           </div>
 
           <button 
-            onClick={handleOpenAddModal}
+            onClick={() => activeTab === 'medicines' ? handleOpenAddModal() : handleOpenIngredientModal()}
             style={{ background: '#1a5a38', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            + නව ඖෂධයක් එක් කරන්න
+            {activeTab === 'medicines' ? '+ නව ඖෂධයක් එක් කරන්න' : '+ නව අමුද්‍රව්‍යයක් එක් කරන්න'}
           </button>
         </header>
 
@@ -237,16 +341,21 @@ export default function PharmacyInventory() {
         <div className="content-inner" style={{ padding: '20px 30px' }}>
           <div style={{ background: '#fff', borderRadius: '16px', padding: '25px', border: '1px solid #f0eae1', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
             
+            <div role="tablist" aria-label="තොග වර්ගය" style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              <button type="button" role="tab" aria-selected={activeTab === 'medicines'} onClick={() => { setActiveTab('medicines'); setSearchTerm(''); }} style={{ border: 0, borderRadius: '8px', padding: '10px 16px', cursor: 'pointer', fontWeight: 'bold', background: activeTab === 'medicines' ? '#1a5a38' : '#f3ede2', color: activeTab === 'medicines' ? '#fff' : '#4a3f35' }}>ඖෂධ</button>
+              <button type="button" role="tab" aria-selected={activeTab === 'ingredients'} onClick={() => { setActiveTab('ingredients'); setSearchTerm(''); }} style={{ border: 0, borderRadius: '8px', padding: '10px 16px', cursor: 'pointer', fontWeight: 'bold', background: activeTab === 'ingredients' ? '#1a5a38' : '#f3ede2', color: activeTab === 'ingredients' ? '#fff' : '#4a3f35' }}>අමුද්‍රව්‍ය</button>
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '25px' }}>
               <h3 style={{ margin: 0, color: '#2c221e', fontSize: '17px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
-                <span style={{ color: '#1a5a38', fontWeight: 'bold' }}>|</span> ඖෂධ තොගය
+                <span style={{ color: '#1a5a38', fontWeight: 'bold' }}>|</span> {activeTab === 'medicines' ? 'ඖෂධ තොගය' : 'අමුද්‍රව්‍ය තොගය'}
               </h3>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#fcfaf7', padding: '8px 15px', borderRadius: '12px', border: '1px solid #e9e2d5', width: '280px' }}>
                 <span style={{ color: '#a0aec0', fontSize: '14px' }}>🔍</span>
                 <input 
                   type="text" 
-                  placeholder="ඖෂධ සොයන්න..."
+                  placeholder={activeTab === 'medicines' ? 'ඖෂධ සොයන්න...' : 'අමුද්‍රව්‍ය සොයන්න...'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   style={{ border: 'none', outline: 'none', width: '100%', fontSize: '13px', background: 'transparent', color: '#2c221e' }}
@@ -254,13 +363,14 @@ export default function PharmacyInventory() {
               </div>
             </div>
 
-            {loading ? (
+            {activeTab === 'medicines' && loading ? (
               <p style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>දත්ත ලබා ගනිමින්...</p>
-            ) : filteredInventory.length > 0 ? (
+            ) : activeTab === 'medicines' && filteredInventory.length > 0 ? (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #f0eae1', color: '#718096', fontSize: '13px', background: '#fcfaf7' }}>
+                      <th style={{ padding: '14px 12px' }}>අංකය</th>
                       <th style={{ padding: '14px 12px' }}>ඖෂධයේ නම</th>
                       <th style={{ padding: '14px 12px' }}>ඒකකය</th>
                       <th style={{ padding: '14px 12px' }}>ඉතිරි ප්‍රමාණය</th>
@@ -277,6 +387,7 @@ export default function PharmacyInventory() {
 
                       return (
                         <tr key={item.id} style={{ borderBottom: '1px solid #f2ede4', fontSize: '14px' }}>
+                          <td style={{ padding: '16px 12px', color: '#5c4a42', fontWeight: '600' }}>{item.itemCode}</td>
                           <td style={{ padding: '16px 12px', fontWeight: '600', color: '#2c221e', verticalAlign: 'middle' }}>
                             {item.name}
                             {todayUsed > 0 && (
@@ -327,8 +438,47 @@ export default function PharmacyInventory() {
                   </tbody>
                 </table>
               </div>
-            ) : (
+            ) : activeTab === 'medicines' ? (
               <p style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>තොගයේ ඖෂධ හමු නොවීය.</p>
+            ) : filteredIngredients.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #f0eae1', color: '#718096', fontSize: '13px', background: '#fcfaf7' }}>
+                      <th style={{ padding: '14px 12px' }}>අංකය</th>
+                      <th style={{ padding: '14px 12px' }}>අමුද්‍රව්‍යයේ නම</th>
+                      <th style={{ padding: '14px 12px' }}>ඒකකය</th>
+                      <th style={{ padding: '14px 12px' }}>ඉතිරි ප්‍රමාණය</th>
+                      <th style={{ padding: '14px 12px' }}>තත්ත්වය</th>
+                      <th style={{ padding: '14px 12px', textAlign: 'center' }}>ක්‍රියාමාර්ග</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredIngredients.map((item) => {
+                      const lowStock = isLowStock(item);
+                      return (
+                        <tr key={item.id} style={{ borderBottom: '1px solid #f2ede4', fontSize: '14px' }}>
+                          <td style={{ padding: '16px 12px', color: '#5c4a42', fontWeight: '600' }}>{item.itemCode}</td>
+                          <td style={{ padding: '16px 12px', fontWeight: '600', color: '#2c221e' }}>{item.name}</td>
+                          <td style={{ padding: '16px 12px', color: '#5c4a42' }}>{item.unit || 'ඒකක'}</td>
+                          <td style={{ padding: '16px 12px', fontWeight: 'bold', color: lowStock ? '#b91c1c' : '#2c221e' }}>{getInventoryQuantity(item)}</td>
+                          <td style={{ padding: '16px 12px' }}>
+                            <span style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: lowStock ? '#fee2e2' : '#ecfdf5', color: lowStock ? '#991b1b' : '#065f46' }}>
+                              {lowStock ? 'තොගය අඩුයි' : 'තොගයේ ඇත'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '16px 12px', textAlign: 'center' }}>
+                            <button type="button" onClick={() => handleOpenIngredientModal(item)} style={{ background: '#f3ede2', border: 'none', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', color: '#4a3f35', fontWeight: '600', marginRight: '6px' }}>යාවත්කාලීන කරන්න</button>
+                            <button type="button" onClick={() => handleDeleteIngredient(item.id)} style={{ background: '#fee2e2', border: 'none', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', color: '#991b1b' }} aria-label={`${item.name} මකන්න`}>🗑️</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>තොගයේ අමුද්‍රව්‍ය හමු නොවීය.</p>
             )}
 
           </div>
@@ -446,6 +596,39 @@ export default function PharmacyInventory() {
                 >
                   සුරකින්න
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {showIngredientModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', padding: '30px', borderRadius: '16px', width: '440px', maxWidth: '90%', boxShadow: '0 15px 30px rgba(0,0,0,0.15)' }}>
+            <h3 style={{ margin: '0 0 20px', color: '#1a5a38', fontSize: '18px', fontWeight: 'bold' }}>
+              {editingIngredientId ? 'අමුද්‍රව්‍ය තොරතුරු යාවත්කාලීන කරන්න' : 'නව අමුද්‍රව්‍යයක් එක් කරන්න'}
+            </h3>
+            <form onSubmit={handleIngredientSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35' }}>
+                අමුද්‍රව්‍යයේ නම
+                <input value={ingredientName} onChange={(e) => setIngredientName(e.target.value)} required style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: '5px', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+              </label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <label style={{ flex: 1, fontSize: '12px', fontWeight: 'bold', color: '#4a3f35' }}>
+                  ප්‍රමාණය
+                  <input type="number" min="0" step="any" value={ingredientQuantity} onChange={(e) => setIngredientQuantity(e.target.value)} required style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: '5px', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                </label>
+                <label style={{ flex: 1, fontSize: '12px', fontWeight: 'bold', color: '#4a3f35' }}>
+                  ඒකකය
+                  <input value={ingredientUnit} onChange={(e) => setIngredientUnit(e.target.value)} placeholder="උදා: kg, g" required style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: '5px', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                </label>
+              </div>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35' }}>
+                අවම තොග මට්ටම
+                <input type="number" min="0" step="any" value={ingredientMinLevel} onChange={(e) => setIngredientMinLevel(e.target.value)} style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: '5px', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+              </label>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button type="button" onClick={() => setShowIngredientModal(false)} style={{ flex: 1, background: '#f3ede2', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', color: '#5c4a42' }}>අවලංගු කරන්න</button>
+                <button type="submit" style={{ flex: 1, background: '#1a5a38', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>සුරකින්න</button>
               </div>
             </form>
           </div>
