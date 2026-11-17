@@ -1,4 +1,5 @@
 import {
+  deductBottleStock,
   getInventoryIngredients,
   getInventoryItemCode,
   getInventoryQuantity,
@@ -24,6 +25,28 @@ describe('inventory stock helpers', () => {
     expect(isLowStock({ quantity: 10 })).toBe(false);
     expect(isLowStock({ quantity: 11 })).toBe(false);
     expect(isLowStock({ quantity: 0, minLevel: 0 })).toBe(false);
+  });
+
+  test('deducts issued quantities from matching bottle-size stock only', () => {
+    expect(deductBottleStock(
+      { bottle: 44, halfBottle: 20, quarterBottle: 30 },
+      { quarterBottle: 3 }
+    )).toEqual({
+      remaining: { bottle: 44, halfBottle: 20, quarterBottle: 27 },
+      insufficientUnit: null
+    });
+  });
+
+  test('reports insufficient stock for the requested bottle size', () => {
+    expect(deductBottleStock(
+      { bottle: 44, halfBottle: 2, quarterBottle: 30 },
+      { halfBottle: 3 }
+    )).toEqual({
+      remaining: null,
+      insufficientUnit: 'halfBottle',
+      available: 2,
+      required: 3
+    });
   });
 
   test('formats compact collection-prefixed inventory numbers', () => {

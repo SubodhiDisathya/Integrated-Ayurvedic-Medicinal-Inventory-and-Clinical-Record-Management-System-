@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../../firebase/firebase';
 import { collection, onSnapshot, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { calculateTotalQuantity } from '../../utils/medicineQuantity';
+import {
+  BOTTLE_STOCK_UNITS,
+  calculateMedicineQuantity,
+  calculateTotalQuantity,
+  isBottleUnit
+} from '../../utils/medicineQuantity';
 import { ensureInventoryItemCode, getHighestInventoryItemNumber, isInventoryItemCode } from '../../utils/inventoryCodes';
 import { getInventoryIngredients, getInventoryQuantity, isLowStock } from '../../utils/inventoryStock';
 
@@ -16,9 +21,10 @@ const AYURVEDIC_MEDICINES = [
   'ත්‍රිඵලා පෙති',
   'සරස්වතාරිෂ්ටය',
   'ජීවලේප ආලේපනය',
-  'බුද්ධරාජ කල්ක',
+  'බුද්ධරාජ කල්ක (ගුලි)',
   'කොලසැලෙස්මා තෛලය',
-  'අරළු පෙති'
+  'අරළු පෙති',
+  'කොලසැලෙස්මා තෛලය'
 ];
 
 const DOSAGE_OPTIONS = [
@@ -31,6 +37,22 @@ const DOSAGE_OPTIONS = [
   'තේ හැඳි 1 බැගින්',
   'මේස හැඳි 1 බැගින්'
 ];
+
+const getInventoryDisplayRows = (item) => {
+  if (item.bottleStock) {
+    return BOTTLE_STOCK_UNITS.map(({ key, label }) => ({
+      key,
+      packageUnit: key,
+      unit: label,
+      quantity: Number(item.bottleStock[key] ?? 0)
+    }));
+  }
+  return [{
+    key: 'default',
+    unit: item.unit || 'ඒකක',
+    quantity: getInventoryQuantity(item)
+  }];
+};
 
 export default function PharmacyInventory() {
   const navigate = useNavigate();
@@ -55,6 +77,8 @@ export default function PharmacyInventory() {
   const [ingredients, setIngredients] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('');
+  const [bottleStock, setBottleStock] = useState({ bottle: '', halfBottle: '', quarterBottle: '' });
+  const [volumePerBottleMl, setVolumePerBottleMl] = useState('');
   const [minLevel, setMinLevel] = useState('');
   const [dosageOption, setDosageOption] = useState('');
   const [showIngredientModal, setShowIngredientModal] = useState(false);
@@ -66,6 +90,7 @@ export default function PharmacyInventory() {
 
   useEffect(() => {
     // 1. Inventory Real-time Listener
+    const bottleStockMigrations = new Set();
     const unsubInventory = onSnapshot(collection(db, 'inventory'), (snapshot) => {
       const list = [];
       const seenNames = new Set();
@@ -81,7 +106,28 @@ export default function PharmacyInventory() {
         if (trimmedName && !seenNames.has(trimmedName)) {
           seenNames.add(trimmedName);
           const itemCode = isInventoryItemCode('MED', data.itemCode) ? data.itemCode : '...';
-          list.push({ id: docSnap.id, ...data, itemCode });
+          const needsBottleStockMigration =
+            trimmedName === 'සරස්වතාරිෂ්ටය' &&
+            data.itemCode === 'MED-1' &&
+            isBottleUnit(data.unit) &&
+            !data.bottleStock;
+          const bottleStock = data.bottleStock || (needsBottleStockMigration
+            ? {
+                bottle: Number(data.quantity ?? 0),
+                halfBottle: 20,
+                quarterBottle: 30
+              }
+            : null);
+          list.push({ id: docSnap.id, ...data, itemCode, ...(bottleStock ? { bottleStock } : {}) });
+
+          if (needsBottleStockMigration && !bottleStockMigrations.has(docSnap.id)) {
+            bottleStockMigrations.add(docSnap.id);
+            updateDoc(docSnap.ref, { bottleStock }).catch((error) => {
+              bottleStockMigrations.delete(docSnap.id);
+              console.error('Error initializing bottle-size inventory:', error);
+            });
+          }
+
           if (!isInventoryItemCode('MED', data.itemCode)) {
             ensureInventoryItemCode(db, docSnap.ref, 'MED', minimumMedicineNumber).catch((error) => {
               console.error('Error assigning medicine inventory code:', error);
@@ -138,10 +184,15 @@ export default function PharmacyInventory() {
           if (isToday && data.medicines && Array.isArray(data.medicines)) {
             data.medicines.forEach(med => {
               const name = med.name?.trim();
-              const totalIssuedQty = calculateTotalQuantity(med);
+              const issued = calculateMedicineQuantity(med);
 
-              if (name && totalIssuedQty > 0) {
-                usageMap[name] = (usageMap[name] || 0) + totalIssuedQty;
+              if (name && issued.quantity > 0) {
+                if (!usageMap[name]) {
+                  usageMap[name] = { total: 0, byUnit: {} };
+                }
+                usageMap[name].total += issued.quantity;
+                usageMap[name].byUnit[issued.unit] =
+                  (usageMap[name].byUnit[issued.unit] || 0) + issued.quantity;
               }
             });
           }
@@ -162,8 +213,35 @@ export default function PharmacyInventory() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!medName || !quantity || !unit) {
+    const usesBottleStock = medName === 'සරස්වතාරිෂ්ටය';
+    if (!medName || (!usesBottleStock && (!quantity || !unit))) {
       alert('කරුණාකර අවශ්‍ය සියලුම තොරතුරු පුරවන්න.');
+      return;
+    }
+
+    const parsedBottleStock = {};
+    if (usesBottleStock) {
+      for (const stockUnit of BOTTLE_STOCK_UNITS) {
+        const value = bottleStock[stockUnit.key];
+        const parsedValue = Number(value);
+        if (value === '' || !Number.isFinite(parsedValue) || parsedValue < 0) {
+          alert('බෝතල්, භාග බෝතල් සහ කාලක් බෝතල් තොග ප්‍රමාණ තුනම ඇතුළත් කරන්න.');
+          return;
+        }
+        parsedBottleStock[stockUnit.key] = parsedValue;
+      }
+    }
+
+    const parsedQuantity = usesBottleStock ? parsedBottleStock.bottle : Number(quantity);
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity < 0) {
+      alert('තොග ප්‍රමාණය 0 හෝ ඊට වැඩි සංඛ්‍යාවක් විය යුතුය.');
+      return;
+    }
+
+    const bottleUnit = !usesBottleStock && isBottleUnit(unit);
+    const parsedBottleVolume = Number(volumePerBottleMl);
+    if (bottleUnit && (!Number.isFinite(parsedBottleVolume) || parsedBottleVolume <= 0)) {
+      alert('බෝතල් ඒකකය භාවිතා කරන විට එක් බෝතලයක mL ප්‍රමාණය ඇතුළත් කරන්න.');
       return;
     }
 
@@ -172,8 +250,10 @@ export default function PharmacyInventory() {
         name: medName,
         category: category || 'Tablet',
         ingredients: ingredients.trim(),
-        quantity: Number(quantity),
-        unit: unit,
+        quantity: parsedQuantity,
+        unit: usesBottleStock ? 'බෝතල්' : unit,
+        bottleStock: usesBottleStock ? parsedBottleStock : null,
+        volumePerBottleMl: bottleUnit ? parsedBottleVolume : null,
         minLevel: Number(minLevel || 10),
         dosageOption: dosageOption || '',
         updatedAt: serverTimestamp()
@@ -261,6 +341,8 @@ export default function PharmacyInventory() {
     setIngredients(getInventoryIngredients({ name: AYURVEDIC_MEDICINES[0] }));
     setQuantity('');
     setUnit('Tablets');
+    setBottleStock({ bottle: '', halfBottle: '', quarterBottle: '' });
+    setVolumePerBottleMl('');
     setMinLevel('10');
     setDosageOption(DOSAGE_OPTIONS[0]);
     setShowModal(true);
@@ -274,6 +356,17 @@ export default function PharmacyInventory() {
     setIngredients(getInventoryIngredients(item));
     setQuantity(item.quantity || '');
     setUnit(item.unit || '');
+    const bottleStock = item.bottleStock || {
+      bottle: item.quantity ?? '',
+      halfBottle: item.itemCode === 'MED-1' && item.name === 'සරස්වතාරිෂ්ටය' ? 20 : '',
+      quarterBottle: item.itemCode === 'MED-1' && item.name === 'සරස්වතාරිෂ්ටය' ? 30 : ''
+    };
+    setBottleStock({
+      bottle: String(bottleStock.bottle ?? ''),
+      halfBottle: String(bottleStock.halfBottle ?? ''),
+      quarterBottle: String(bottleStock.quarterBottle ?? '')
+    });
+    setVolumePerBottleMl(item.volumePerBottleMl ?? '');
     setMinLevel(item.minLevel || '');
     setDosageOption(item.dosageOption || '');
     setShowModal(true);
@@ -298,7 +391,14 @@ export default function PharmacyInventory() {
     item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.itemCode?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  const lowStockItems = inventory.filter(isLowStock);
+  const inventoryRows = filteredInventory.flatMap((item) =>
+    getInventoryDisplayRows(item).map((stockRow) => ({ item, stockRow }))
+  );
+  const lowStockItems = inventory.flatMap((item) =>
+    getInventoryDisplayRows(item)
+      .filter((row) => isLowStock({ quantity: row.quantity, minLevel: item.minLevel }))
+      .map((row) => ({ name: item.name, quantity: row.quantity, unit: row.unit }))
+  );
 
   return (
     <div className="doctor-container">
@@ -326,7 +426,7 @@ export default function PharmacyInventory() {
           >
             <strong>අඩු තොග අනතුරු ඇඟවීම ({lowStockItems.length})</strong>
             <p style={{ margin: '6px 0 10px' }}>
-              {lowStockItems.map((item) => `${item.name}: ${getInventoryQuantity(item)} ${item.unit || 'ඒකක'}`).join(' · ')}
+              {lowStockItems.map((item) => `${item.name}: ${item.quantity} ${item.unit}`).join(' · ')}
             </p>
             <button
               type="button"
@@ -379,28 +479,29 @@ export default function PharmacyInventory() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredInventory.map((item) => {
-                      // 💡 FIXED: Real-time Stock is directly managed from Firestore `quantity`
-                      const currentQty = getInventoryQuantity(item);
-                      const todayUsed = todaysUsage[item.name?.trim()] || 0;
-                      const isLow = isLowStock(item);
+                    {inventoryRows.map(({ item, stockRow }, index) => {
+                        const todayUsage = todaysUsage[item.name?.trim()];
+                        const todayUsed = stockRow.packageUnit
+                          ? todayUsage?.byUnit?.[stockRow.packageUnit] || 0
+                          : todayUsage?.total || 0;
+                        const isLow = isLowStock({ quantity: stockRow.quantity, minLevel: item.minLevel });
 
-                      return (
-                        <tr key={item.id} style={{ borderBottom: '1px solid #f2ede4', fontSize: '14px' }}>
-                          <td style={{ padding: '16px 12px', color: '#5c4a42', fontWeight: '600' }}>{item.itemCode}</td>
+                        return (
+                        <tr key={`${item.id}-${stockRow.key}`} style={{ borderBottom: '1px solid #f2ede4', fontSize: '14px' }}>
+                          <td style={{ padding: '16px 12px', color: '#5c4a42', fontWeight: '600' }}>MED-{index + 1}</td>
                           <td style={{ padding: '16px 12px', fontWeight: '600', color: '#2c221e', verticalAlign: 'middle' }}>
                             {item.name}
                             {todayUsed > 0 && (
                               <div style={{ fontSize: '11px', color: '#d97706', marginTop: '4px', fontWeight: 'normal' }}>
-                                ⚡ අද නිකුත් කළ ප්‍රමාණය: <strong>{todayUsed} {item.unit || 'ඒකක'}</strong>
+                                ⚡ අද නිකුත් කළ ප්‍රමාණය: <strong>{todayUsed} {stockRow.unit}</strong>
                               </div>
                             )}
                           </td>
                           <td style={{ padding: '16px 12px', color: '#5c4a42', verticalAlign: 'middle' }}>
-                            {item.unit || 'ඒකක'}
+                            {stockRow.unit}
                           </td>
                           <td style={{ padding: '16px 12px', fontWeight: 'bold', color: isLow ? '#b91c1c' : '#2c221e', verticalAlign: 'middle' }}>
-                            {currentQty}
+                            {stockRow.quantity}
                           </td>
                           <td style={{ padding: '16px 12px', verticalAlign: 'middle' }}>
                             <span style={{ 
@@ -433,7 +534,7 @@ export default function PharmacyInventory() {
                             </div>
                           </td>
                         </tr>
-                      );
+                        );
                     })}
                   </tbody>
                 </table>
@@ -533,29 +634,80 @@ export default function PharmacyInventory() {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>ප්‍රමාණය</label>
-                  <input 
-                    type="number" 
-                    value={quantity} 
-                    onChange={(e) => setQuantity(e.target.value)} 
-                    required 
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }} 
-                  />
+              {medName === 'සරස්වතාරිෂ්ටය' ? (
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '8px' }}>බෝතල් වර්ගය අනුව තොගය</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    {BOTTLE_STOCK_UNITS.map(({ key, label }) => (
+                      <div key={key}>
+                        <label htmlFor={`bottle-stock-${key}`} style={{ fontSize: '12px', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>
+                          {label}
+                        </label>
+                        <input
+                          id={`bottle-stock-${key}`}
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={bottleStock[key]}
+                          onChange={(e) => setBottleStock((previous) => ({
+                            ...previous,
+                            [key]: e.target.value
+                          }))}
+                          required
+                          style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>ඒකකය</label>
-                  <input 
-                    type="text" 
-                    value={unit} 
-                    onChange={(e) => setUnit(e.target.value)} 
-                    placeholder="උදා: පෙති, බෝතල්"
-                    required 
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }} 
-                  />
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>ප්‍රමාණය</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        required
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>ඒකකය</label>
+                      <input
+                        type="text"
+                        value={unit}
+                        onChange={(e) => setUnit(e.target.value)}
+                        placeholder="උදා: පෙති, බෝතල්"
+                        required
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
+                      />
+                    </div>
+                  </div>
+
+                  {isBottleUnit(unit) && (
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>එක් බෝතලයක පරිමාව (mL)</label>
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="any"
+                        value={volumePerBottleMl}
+                        onChange={(e) => setVolumePerBottleMl(e.target.value)}
+                        placeholder="උදා: 450"
+                        required
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
+                      />
+                      <small style={{ display: 'block', marginTop: '5px', color: '#718096' }}>
+                        බෝතලයේ ලේබලයේ ඇති mL අගය ඇතුළත් කරන්න. ඉතිරි තොගය පද්ධතිය ස්වයංක්‍රීයව ගණනය කරයි.
+                      </small>
+                    </div>
+                  )}
+                </>
+              )}
 
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>සාමාන්‍ය මාත්‍රා විකල්පය</label>
@@ -619,14 +771,14 @@ export default function PharmacyInventory() {
                 </label>
                 <label style={{ flex: 1, fontSize: '12px', fontWeight: 'bold', color: '#4a3f35' }}>
                   ඒකකය
-                  <input value={ingredientUnit} onChange={(e) => setIngredientUnit(e.target.value)} placeholder="උදා: kg, g" required style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: '5px', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                  <input value={ingredientUnit} onChange={(e) => setIngredientUnit(e.target.value)} placeholder="උදා: ග්‍රෑම්, කිලෝ" required style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: '5px', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                 </label>
               </div>
               <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35' }}>
                 අවම තොග මට්ටම
-                <input type="number" min="0" step="any" value={ingredientMinLevel} onChange={(e) => setIngredientMinLevel(e.target.value)} style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: '5px', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                <input type="number" min="0" step="any" value={ingredientMinLevel} onChange={(e) => setIngredientMinLevel(e.target.value)} required style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: '5px', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
               </label>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button type="button" onClick={() => setShowIngredientModal(false)} style={{ flex: 1, background: '#f3ede2', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', color: '#5c4a42' }}>අවලංගු කරන්න</button>
                 <button type="submit" style={{ flex: 1, background: '#1a5a38', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>සුරකින්න</button>
               </div>

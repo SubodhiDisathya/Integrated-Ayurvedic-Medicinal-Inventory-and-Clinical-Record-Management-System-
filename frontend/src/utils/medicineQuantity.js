@@ -53,6 +53,14 @@ const getVolumeDose = (dosage) => {
   return null;
 };
 
+const getBottleDoseUnit = (dosage) => {
+  const text = String(dosage || '').toLowerCase();
+  if (text.includes('බෝතල් කාලක්')) return 'quarterBottle';
+  if (text.includes('බෝතල් භාගයක්') || text.includes('භාග බෝතලයක්')) return 'halfBottle';
+  if (text.includes('බෝතල් එකක්')) return 'bottle';
+  return null;
+};
+
 const getPerDoseCount = (dosage) => {
   const text = String(dosage || '').toLowerCase();
   const contextualMatch = text.match(/(?:වේලකට|පෙති|tablets?)\s*(\d+(?:\.\d+)?)/);
@@ -61,6 +69,15 @@ const getPerDoseCount = (dosage) => {
   const match = text.match(/\d+(?:\.\d+)?/);
   return match ? Number(match[0]) : 1;
 };
+
+export const BOTTLE_STOCK_UNITS = [
+  { key: 'bottle', label: 'බෝතල්' },
+  { key: 'halfBottle', label: 'බෝතල් භාගයක් (භාග බෝතලයක්)' },
+  { key: 'quarterBottle', label: 'බෝතල් කාලක්' }
+];
+
+export const isBottlePackageUnit = (unit = '') =>
+  BOTTLE_STOCK_UNITS.some(({ key }) => key === unit);
 
 export const isMilliliterUnit = (unit = '') => {
   const normalized = String(unit).toLowerCase().replace(/\s/g, '');
@@ -74,23 +91,41 @@ export const isMilliliterUnit = (unit = '') => {
     normalized === 'මි.ලි.';
 };
 
+export const isBottleUnit = (unit = '') => {
+  const normalized = String(unit).toLowerCase().replace(/\s/g, '');
+  return ['bottle', 'bottles', 'බෝතලය', 'බෝතල්'].includes(normalized);
+};
+
+export const convertBottleStockToMilliliters = (quantity, volumePerBottleMl) => {
+  const bottleCount = Number(quantity);
+  const bottleVolume = Number(volumePerBottleMl);
+  if (!Number.isFinite(bottleCount) || bottleCount < 0 || !Number.isFinite(bottleVolume) || bottleVolume <= 0) {
+    return null;
+  }
+  return bottleCount * bottleVolume;
+};
+
 export const calculateMedicineQuantity = (medicine) => {
   if (!medicine) return { quantity: 0, unit: 'count' };
 
   const dosage = medicine.dosage || medicine.dosageOption || '';
-  const volumeDose = getVolumeDose(dosage);
+  const bottleDoseUnit = getBottleDoseUnit(dosage);
+  const volumeDose = bottleDoseUnit ? null : getVolumeDose(dosage);
   const explicitTotal = getNumber(medicine.totalQty) || getNumber(medicine.quantity);
   if (explicitTotal !== null) {
-    return { quantity: explicitTotal, unit: volumeDose === null ? 'count' : 'ml' };
+    return {
+      quantity: explicitTotal,
+      unit: bottleDoseUnit || (volumeDose === null ? 'count' : 'ml')
+    };
   }
 
-  const perDose = volumeDose === null ? getPerDoseCount(dosage) : volumeDose;
+  const perDose = bottleDoseUnit ? 1 : volumeDose === null ? getPerDoseCount(dosage) : volumeDose;
   const timesPerDay = getTimesPerDay(medicine.frequency || dosage);
   const quantity = perDose * timesPerDay * getDays(medicine.duration || medicine.days);
 
   return {
     quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 0,
-    unit: volumeDose === null ? 'count' : 'ml'
+    unit: bottleDoseUnit || (volumeDose === null ? 'count' : 'ml')
   };
 };
 

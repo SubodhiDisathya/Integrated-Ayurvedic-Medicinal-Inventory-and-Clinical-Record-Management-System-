@@ -1,3 +1,5 @@
+import { BOTTLE_STOCK_UNITS } from './medicineQuantity';
+
 export const DEFAULT_INVENTORY_INGREDIENTS = {
   'ජීවලේප ආලේපනය': [
     'පාවට්ටා කොළ',
@@ -48,6 +50,19 @@ export const getInventoryIngredients = (item = {}) => {
 
 export const isLowStock = (item) =>
   getInventoryQuantity(item) < getInventoryThreshold(item);
+
+export const deductBottleStock = (stock = {}, issued = {}) => {
+  const remaining = {};
+  for (const { key } of BOTTLE_STOCK_UNITS) {
+    const available = Number(stock[key] ?? 0);
+    const required = Number(issued[key] ?? 0);
+    if (!Number.isFinite(available) || available < 0 || !Number.isFinite(required) || required < 0 || available < required) {
+      return { remaining: null, insufficientUnit: key, available, required };
+    }
+    remaining[key] = available - required;
+  }
+  return { remaining, insufficientUnit: null };
+};
 
 export const getInventoryItemCode = (prefix, number) =>
   `${prefix}-${number}`;

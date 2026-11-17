@@ -1,4 +1,9 @@
-import { calculateMedicineQuantity, isMilliliterUnit } from './medicineQuantity';
+import {
+  calculateMedicineQuantity,
+  convertBottleStockToMilliliters,
+  isBottleUnit,
+  isMilliliterUnit
+} from './medicineQuantity';
 
 describe('calculateMedicineQuantity', () => {
   test('calculates half-cup liquid doses for each named time of day', () => {
@@ -38,6 +43,14 @@ describe('calculateMedicineQuantity', () => {
     })).toEqual({ quantity: 20, unit: 'count' });
   });
 
+  test.each([
+    ['බෝතල් කාලක්', 'උදේ, සවස', 'දින 3ක්', { quantity: 6, unit: 'quarterBottle' }],
+    ['බෝතල් භාගයක් (භාග බෝතලයක්)', 'උදේ, දවල්, රාත්‍රී', 'දින 2ක්', { quantity: 6, unit: 'halfBottle' }],
+    ['බෝතල් එකක්', 'උදේ', 'දින 5ක්', { quantity: 5, unit: 'bottle' }]
+  ])('calculates %s bottle doses in the matching stock unit', (dosage, frequency, duration, expected) => {
+    expect(calculateMedicineQuantity({ dosage, frequency, duration })).toEqual(expected);
+  });
+
   test('accepts an explicit total quantity without multiplying it again', () => {
     expect(calculateMedicineQuantity({
       dosage: '60 mL උදේ සවස',
@@ -57,5 +70,25 @@ describe('isMilliliterUnit', () => {
 
   test('does not treat bottle stock as milliliters', () => {
     expect(isMilliliterUnit('බෝතල්')).toBe(false);
+  });
+});
+
+describe('isBottleUnit', () => {
+  test.each(['bottle', 'bottles', 'බෝතලය', 'බෝතල්'])(
+    'recognizes %s as a bottle unit',
+    (unit) => {
+      expect(isBottleUnit(unit)).toBe(true);
+    }
+  );
+});
+
+describe('convertBottleStockToMilliliters', () => {
+  test('converts bottle stock using the configured bottle volume', () => {
+    expect(convertBottleStockToMilliliters(2, 450)).toBe(900);
+  });
+
+  test('rejects missing or invalid bottle volume', () => {
+    expect(convertBottleStockToMilliliters(2, '')).toBeNull();
+    expect(convertBottleStockToMilliliters(2, -450)).toBeNull();
   });
 });

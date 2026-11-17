@@ -33,18 +33,29 @@ const MEDICINE_NAMES = [
   'ත්‍රිඵලා පෙති',
   'සරස්වතාරිෂ්ටය',
   'ජීවලේප ආලේපනය',
-  'බුද්ධරාජ කල්ක',
+  'බුද්ධරාජ කල්ක(ගුලි)',
   'කොලසැලෙස්මා තෛලය',
   'අරළු පෙති'
 ];
 
+const BOTTLE_DOSAGE_OPTIONS = [
+  'බෝතල් කාලක්',
+  'බෝතල් භාගයක් (භාග බෝතලයක්)',
+  'බෝතල් එකක්'
+];
+
 const DOSAGE_OPTIONS = [
-  'කෝප්ප භාගයක් (60 ml)',
-  'කෝප්ප එකක් (120 ml)',
   'පෙති 1 බැගින්',
   'පෙති 2 බැගින්',
-  'මේස හැන්දක් (15 ml)',
-  'ආලේප කිරීම (අවශ්‍ය පමණ)'
+  'ගුලි 1 බැගින්',
+  'ගුලි 2 බැගින්',
+  'පැකට් 1 බැගින්',
+  'පැකට් 2 බැගින්',
+  'බෝතල් කාලක්',
+  'බෝතල් භාගයක්',
+  'බෝතලයක්'
+  
+  
 ];
 
 const DURATION_OPTIONS = [
@@ -53,8 +64,7 @@ const DURATION_OPTIONS = [
   'දින 7ක්',
   'දින 10ක්',
   'දින 14ක්',
-  'දින 21ක්',
-  'මාස 1ක්'
+  'දින 21ක්'
 ];
 
 const FREQUENCY_OPTIONS = [
@@ -176,6 +186,13 @@ export default function DoctorConsultation() {
       return;
     }
 
+    if (medicines.some((medicine) =>
+      medicine.name === 'සරස්වතාරිෂ්ටය' && !BOTTLE_DOSAGE_OPTIONS.includes(medicine.dosage)
+    )) {
+      alert('සරස්වතාරිෂ්ටය සඳහා බෝතල් කාලක්, බෝතල් භාගයක් හෝ බෝතල් එකක් තෝරන්න.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -218,8 +235,6 @@ export default function DoctorConsultation() {
           history: arrayUnion(newHistoryItem)
         });
       }
-
-      alert(`Step 1 සාර්ථකයි: ${patient.name} ගේ ඖෂධ වට්ටෝරුව Pharmacy වෙත යවන ලදී!`);
     } catch (error) {
       console.error('Firebase Error: ', error);
       alert('දත්ත Firebase වෙත ඇතුළත් කිරීමේදී දෝෂයක් සිදු විය.');
@@ -409,7 +424,7 @@ export default function DoctorConsultation() {
                           style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
                         />
                         <datalist id={`med-dosages-${index}`}>
-                          {DOSAGE_OPTIONS.map((item, idx) => (
+                          {(med.name === 'සරස්වතාරිෂ්ටය' ? BOTTLE_DOSAGE_OPTIONS : DOSAGE_OPTIONS).map((item, idx) => (
                             <option key={idx} value={item} />
                           ))}
                         </datalist>
@@ -480,7 +495,7 @@ export default function DoctorConsultation() {
                 </div>
               ) : (
                 <div className="status-success-badge">
-                  ✅ Firebase සහ Pharmacy වෙත සාර්ථකව යවන ලදී.
+                Pharmacy වෙත සාර්ථකව යවන ලදී ✅ 
                 </div>
               )}
             </form>

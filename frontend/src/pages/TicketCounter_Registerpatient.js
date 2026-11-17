@@ -147,10 +147,9 @@ export default function RegisterPatient() {
       });
 
       setAlertInfo({
-        message: `රෝගියා සාර්ථකව අලුතින් ලියාපදිංචි කර වෛද්‍යවරයා වෙත යොමු කරන ලදී! (ලියාපදිංචි අංකය: ${targetPatientId})`,
+        message: 'රෝගියා සාර්ථකව වෛද්‍යවරයා වෙත යොමු කරන ලදී!',
         type: 'success'
       });
-
       handleClear(false);
 
     } catch (error) {

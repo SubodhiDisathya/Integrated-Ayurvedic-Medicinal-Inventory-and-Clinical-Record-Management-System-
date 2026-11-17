@@ -4,7 +4,16 @@ import { useNavigate } from 'react-router-dom';
 // Firebase Imports
 import { db } from '../../firebase/firebase';
 import { collection, onSnapshot, doc, updateDoc, query, where, getDocs, runTransaction } from 'firebase/firestore';
-import { calculateMedicineQuantity, calculateTotalQuantity, isMilliliterUnit } from '../../utils/medicineQuantity';
+import {
+  BOTTLE_STOCK_UNITS,
+  calculateMedicineQuantity,
+  calculateTotalQuantity,
+  convertBottleStockToMilliliters,
+  isBottlePackageUnit,
+  isBottleUnit,
+  isMilliliterUnit
+} from '../../utils/medicineQuantity';
+import { deductBottleStock } from '../../utils/inventoryStock';
 
 // Component Import
 import SidebarPhar from '../../components/Sidebar_phar';
@@ -114,15 +123,33 @@ export default function PharmacyPatientPrescription() {
         }
 
         const existingChange = stockChanges.get(inventoryRef.id);
-        if (existingChange && existingChange.unit !== issue.unit) {
+        const packageUnit = isBottlePackageUnit(issue.unit);
+        if (!existingChange) {
+          stockChanges.set(inventoryRef.id, packageUnit
+            ? {
+                ref: inventoryRef,
+                name,
+                mode: 'package',
+                issuedByPackage: { [issue.unit]: issue.quantity }
+              }
+            : {
+                ref: inventoryRef,
+                name,
+                mode: 'standard',
+                unit: issue.unit,
+                issuedQty: issue.quantity
+              });
+          continue;
+        }
+
+        if (packageUnit && existingChange.mode === 'package') {
+          existingChange.issuedByPackage[issue.unit] =
+            (existingChange.issuedByPackage[issue.unit] || 0) + issue.quantity;
+        } else if (!packageUnit && existingChange.mode === 'standard' && existingChange.unit === issue.unit) {
+          existingChange.issuedQty += issue.quantity;
+        } else {
           throw new Error(`"${name}" ඖෂධය සඳහා එකිනෙකට වෙනස් මිනුම් ඒකක සහිත මාත්‍රා තිබේ.`);
         }
-        stockChanges.set(inventoryRef.id, {
-          ref: inventoryRef,
-          name,
-          unit: issue.unit,
-          issuedQty: (existingChange?.issuedQty || 0) + issue.quantity
-        });
       }
 
       const prescriptionRef = doc(db, 'pharmacy_prescriptions', prescriptionId);
@@ -136,6 +163,7 @@ export default function PharmacyPatientPrescription() {
         const inventorySnapshots = await Promise.all(
           changes.map(({ ref }) => transaction.get(ref))
         );
+        const stockUpdates = new Map();
 
         changes.forEach((change, index) => {
           const inventoryDoc = inventorySnapshots[index];
@@ -144,22 +172,91 @@ export default function PharmacyPatientPrescription() {
           }
 
           const inventoryData = inventoryDoc.data();
-          if (change.unit === 'ml' && !isMilliliterUnit(inventoryData.unit)) {
-            throw new Error(`"${change.name}" ඖෂධයේ තොග ඒකකය mL නොවේ. බෝතල් ප්‍රමාණය අනුමාන නොකරන බැවින්, තොග ඒකකය mL කර නිවැරදි ඉතිරි mL ප්‍රමාණය ඇතුළත් කරන්න.`);
+          if (change.mode === 'package') {
+            if (!isBottleUnit(inventoryData.unit)) {
+              throw new Error(`"${change.name}" සඳහා බෝතල් වර්ග අනුව තොගය සකසා නැත.`);
+            }
+
+            const configuredBottleStock = inventoryData.bottleStock || {};
+            const availableBottleStock = {};
+            BOTTLE_STOCK_UNITS.forEach(({ key }) => {
+              const fallbackQuantity = key === 'bottle' ? inventoryData.quantity ?? 0 : 0;
+              availableBottleStock[key] = configuredBottleStock[key] ?? fallbackQuantity;
+            });
+
+            const deduction = deductBottleStock(availableBottleStock, change.issuedByPackage);
+            if (deduction.insufficientUnit) {
+              const label = BOTTLE_STOCK_UNITS.find(({ key }) => key === deduction.insufficientUnit)?.label;
+              throw new Error(`"${change.name}" සඳහා ${label} තොගය ප්‍රමාණවත් නැත. ඉතිරිව ඇත්තේ ${deduction.available}යි; අවශ්‍ය ප්‍රමාණය ${deduction.required}යි.`);
+            }
+
+            stockUpdates.set(change.ref.id, {
+              mode: 'package',
+              bottleStock: deduction.remaining
+            });
+            return;
           }
+
+          if (inventoryData.bottleStock) {
+            throw new Error(`"${change.name}" ඖෂධයේ තොගය බෝතල් වර්ග අනුව ඇත. prescription මාත්‍රාවත් බෝතල් ඒකකයකින් තෝරන්න.`);
+          }
+
+          const bottleUnit = isBottleUnit(inventoryData.unit);
+          let currentStock = Number(inventoryData.quantity ?? 0);
+          let convertToMilliliters = false;
+          let minLevelInMl;
+
+          if (change.unit === 'ml' && bottleUnit) {
+            currentStock = convertBottleStockToMilliliters(
+              currentStock,
+              inventoryData.volumePerBottleMl
+            );
+            if (currentStock === null) {
+              throw new Error(`"${change.name}" ඖෂධයේ බෝතලයක mL ප්‍රමාණය තොග කළමනාකරණයෙන් එක් කරන්න. බෝතලයේ ලේබලයේ ඇති mL අගය ඇතුළත් කළ පසු තොග ගණනය කිරීම පද්ධතිය ස්වයංක්‍රීයව සිදු කරයි.`);
+            }
+            convertToMilliliters = true;
+            const bottleVolume = Number(inventoryData.volumePerBottleMl);
+            const minLevel = Number(inventoryData.minLevel ?? 10);
+            minLevelInMl = (Number.isFinite(minLevel) && minLevel >= 0 ? minLevel : 10) * bottleVolume;
+          } else if (change.unit === 'ml' && !isMilliliterUnit(inventoryData.unit)) {
+            throw new Error(`"${change.name}" ඖෂධයේ තොග ඒකකය mL හෝ බෝතල් ලෙස නිවැරදිව සකසන්න.`);
+          }
+
           if (change.unit === 'count' && isMilliliterUnit(inventoryData.unit)) {
             throw new Error(`"${change.name}" සඳහා මාත්‍රාව mL ලෙස සඳහන් කරන්න. තොග ඒකකය mL වේ.`);
           }
+          if (change.unit === 'count' && bottleUnit) {
+            throw new Error(`"${change.name}" සඳහා තොග ඒකකය බෝතල් වේ. prescription මාත්‍රාව සහ තොග ඒකකය ගැළපෙන ලෙස සකසන්න.`);
+          }
 
-          const currentStock = Number(inventoryData.quantity || 0);
           if (!Number.isFinite(currentStock) || currentStock < change.issuedQty) {
             throw new Error(`"${change.name}" සඳහා තොගය ප්‍රමාණවත් නැත. ඉතිරිව ඇත්තේ ${currentStock}යි; අවශ්‍ය ප්‍රමාණය ${change.issuedQty}යි.`);
           }
+          stockUpdates.set(change.ref.id, {
+            mode: 'standard',
+            availableStock: currentStock,
+            convertToMilliliters,
+            minLevelInMl
+          });
         });
 
-        changes.forEach((change, index) => {
-          const currentStock = Number(inventorySnapshots[index].data().quantity || 0);
-          transaction.update(change.ref, { quantity: currentStock - change.issuedQty });
+        changes.forEach((change) => {
+          const stockUpdate = stockUpdates.get(change.ref.id);
+          if (stockUpdate.mode === 'package') {
+            transaction.update(change.ref, {
+              bottleStock: stockUpdate.bottleStock,
+              quantity: stockUpdate.bottleStock.bottle,
+              unit: 'බෝතල්'
+            });
+            return;
+          }
+
+          const updates = { quantity: stockUpdate.availableStock - change.issuedQty };
+          if (stockUpdate.convertToMilliliters) {
+            updates.unit = 'mL';
+            updates.minLevel = stockUpdate.minLevelInMl;
+          }
+          transaction.update(change.ref, updates);
         });
         transaction.update(prescriptionRef, { status: 'Completed' });
       });
