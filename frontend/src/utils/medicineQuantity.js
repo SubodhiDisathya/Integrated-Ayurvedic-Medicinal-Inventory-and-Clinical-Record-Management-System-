@@ -55,9 +55,9 @@ const getVolumeDose = (dosage) => {
 
 const getBottleDoseUnit = (dosage) => {
   const text = String(dosage || '').toLowerCase();
-  if (text.includes('බෝතල් කාලක්')) return 'quarterBottle';
-  if (text.includes('බෝතල් භාගයක්') || text.includes('භාග බෝතලයක්')) return 'halfBottle';
-  if (text.includes('බෝතල් එකක්')) return 'bottle';
+  if (text.includes('කාල බෝතල්') || text.includes('බෝතල් කාලක්')) return 'quarterBottle';
+  if (text.includes('භාග බෝතල්') || text.includes('බෝතල් භාගයක්') || text.includes('භාග බෝතලයක්')) return 'halfBottle';
+  if (text.includes('බෝතල් එකක්') || text.includes('බෝතලයක්')) return 'bottle';
   return null;
 };
 
@@ -72,8 +72,8 @@ const getPerDoseCount = (dosage) => {
 
 export const BOTTLE_STOCK_UNITS = [
   { key: 'bottle', label: 'බෝතල්' },
-  { key: 'halfBottle', label: 'බෝතල් භාගයක් (භාග බෝතලයක්)' },
-  { key: 'quarterBottle', label: 'බෝතල් කාලක්' }
+  { key: 'halfBottle', label: 'භාග බෝතල්' },
+  { key: 'quarterBottle', label: 'කාල බෝතල්' }
 ];
 
 export const isBottlePackageUnit = (unit = '') =>

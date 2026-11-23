@@ -225,7 +225,7 @@ export default function PharmacyInventory() {
         const value = bottleStock[stockUnit.key];
         const parsedValue = Number(value);
         if (value === '' || !Number.isFinite(parsedValue) || parsedValue < 0) {
-          alert('බෝතල්, භාග බෝතල් සහ කාලක් බෝතල් තොග ප්‍රමාණ තුනම ඇතුළත් කරන්න.');
+          alert('බෝතල්, භාග බෝතල් සහ කාල බෝතල් තොග ප්‍රමාණ තුනම ඇතුළත් කරන්න.');
           return;
         }
         parsedBottleStock[stockUnit.key] = parsedValue;

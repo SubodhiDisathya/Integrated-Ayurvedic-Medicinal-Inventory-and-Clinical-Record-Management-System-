@@ -39,8 +39,8 @@ const MEDICINE_NAMES = [
 ];
 
 const BOTTLE_DOSAGE_OPTIONS = [
-  'බෝතල් කාලක්',
-  'බෝතල් භාගයක් (භාග බෝතලයක්)',
+  'කාල බෝතල්',
+  'භාග බෝතල්',
   'බෝතල් එකක්'
 ];
 
@@ -51,8 +51,8 @@ const DOSAGE_OPTIONS = [
   'ගුලි 2 බැගින්',
   'පැකට් 1 බැගින්',
   'පැකට් 2 බැගින්',
-  'බෝතල් කාලක්',
-  'බෝතල් භාගයක්',
+  'කාල බෝතල්',
+  'භාග බෝතල්',
   'බෝතලයක්'
   
   
@@ -189,7 +189,7 @@ export default function DoctorConsultation() {
     if (medicines.some((medicine) =>
       medicine.name === 'සරස්වතාරිෂ්ටය' && !BOTTLE_DOSAGE_OPTIONS.includes(medicine.dosage)
     )) {
-      alert('සරස්වතාරිෂ්ටය සඳහා බෝතල් කාලක්, බෝතල් භාගයක් හෝ බෝතල් එකක් තෝරන්න.');
+      alert('සරස්වතාරිෂ්ටය සඳහා කාල බෝතල්, භාග බෝතල් හෝ බෝතල් එකක් තෝරන්න.');
       return;
     }
 
