@@ -1,5 +1,8 @@
 import {
   deductBottleStock,
+  DEFAULT_INVENTORY_THRESHOLD,
+  getInventoryStockRows,
+  getLowStockRows,
   getInventoryIngredients,
   getInventoryItemCode,
   getInventoryQuantity,
@@ -14,17 +17,36 @@ describe('inventory stock helpers', () => {
     expect(getInventoryQuantity({ stock: 3 })).toBe(3);
   });
 
-  test('uses the configured minimum level and defaults to ten', () => {
-    expect(getInventoryThreshold({ minLevel: 5, threshold: 8 })).toBe(5);
-    expect(getInventoryThreshold({ threshold: 7 })).toBe(7);
-    expect(getInventoryThreshold({})).toBe(10);
+  test('uses 20 as the minimum threshold while retaining higher custom levels', () => {
+    expect(DEFAULT_INVENTORY_THRESHOLD).toBe(20);
+    expect(getInventoryThreshold({ minLevel: 5, threshold: 8 })).toBe(20);
+    expect(getInventoryThreshold({ threshold: 25 })).toBe(25);
+    expect(getInventoryThreshold({})).toBe(20);
   });
 
   test('considers stock below its threshold low', () => {
     expect(isLowStock({ quantity: 9 })).toBe(true);
-    expect(isLowStock({ quantity: 10 })).toBe(false);
-    expect(isLowStock({ quantity: 11 })).toBe(false);
-    expect(isLowStock({ quantity: 0, minLevel: 0 })).toBe(false);
+    expect(isLowStock({ quantity: 19, minLevel: 10 })).toBe(true);
+    expect(isLowStock({ quantity: 20 })).toBe(false);
+    expect(isLowStock({ quantity: 25, minLevel: 30 })).toBe(true);
+    expect(isLowStock({ quantity: 0, minLevel: 0 })).toBe(true);
+  });
+
+  test('expands bottle medicine stock into all three package units', () => {
+    expect(getInventoryStockRows({
+      bottleStock: { bottle: 20, halfBottle: 30, quarterBottle: 40 }
+    })).toEqual([
+      { key: 'bottle', packageUnit: 'bottle', unit: 'බෝතල්', quantity: 20 },
+      { key: 'halfBottle', packageUnit: 'halfBottle', unit: 'භාග බෝතල්', quantity: 30 },
+      { key: 'quarterBottle', packageUnit: 'quarterBottle', unit: 'කාල බෝතල්', quantity: 40 }
+    ]);
+  });
+
+  test('detects low stock per bottle package unit', () => {
+    expect(getLowStockRows({
+      bottleStock: { bottle: 5, halfBottle: 30, quarterBottle: 3 },
+      minLevel: 10
+    }).map((row) => row.packageUnit)).toEqual(['bottle', 'quarterBottle']);
   });
 
   test('deducts issued quantities from matching bottle-size stock only', () => {

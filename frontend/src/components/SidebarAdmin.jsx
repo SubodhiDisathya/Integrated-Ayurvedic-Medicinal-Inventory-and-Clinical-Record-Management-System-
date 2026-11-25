@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase/firebase';
 import './Sidebar_admin.css';
 
 import logoEmblem from '../assets/logo-top.png';
@@ -23,6 +25,20 @@ const menuItems = [
 export default function SidebarAdmin() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [pendingSupplyRequests, setPendingSupplyRequests] = useState(0);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'low_stock_requests'),
+      (snapshot) => {
+        setPendingSupplyRequests(snapshot.docs.filter((requestDoc) =>
+          requestDoc.data().status !== 'approved'
+        ).length);
+      },
+      (error) => console.error('Error fetching admin sidebar supply requests:', error)
+    );
+    return () => unsubscribe();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -58,6 +74,11 @@ export default function SidebarAdmin() {
             >
               <i className={`bi ${item.icon}`} aria-hidden="true"></i>
               <span>{item.label}</span>
+              {item.path === '/admin' && pendingSupplyRequests > 0 && (
+                <span style={{ marginLeft: 'auto', minWidth: '20px', height: '20px', lineHeight: '20px', textAlign: 'center', borderRadius: '10px', background: '#dc2626', color: '#fff', fontSize: '10px', fontWeight: '700' }}>
+                  {pendingSupplyRequests}
+                </span>
+              )}
             </button>
           );
         })}

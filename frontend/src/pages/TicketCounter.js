@@ -90,7 +90,11 @@ export default function TicketCounter() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button style={{ background: '#eef2e8', border: '1px solid #e4ddc9', padding: '8px 14px', borderRadius: '50px', fontSize: '0.9rem', color: '#0f3d27', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600', position: 'relative' }}>
               <i className="bi bi-bell"></i>
-              <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#c1483f', color: '#ffffff', fontSize: '0.65rem', padding: '2px 5px', borderRadius: '50%' }}>3</span>
+              {(stats.notYetVisited + stats.sentToDoctor) > 0 && (
+                <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#c1483f', color: '#ffffff', fontSize: '0.65rem', padding: '2px 5px', borderRadius: '50%' }}>
+                  {stats.notYetVisited + stats.sentToDoctor}
+                </span>
+              )}
             </button>
             <button style={{ background: '#eef2e8', border: '1px solid #e4ddc9', padding: '8px 14px', borderRadius: '50px', fontSize: '0.9rem', color: '#0f3d27', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
               <i className="bi bi-person-circle"></i>

@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase/firebase';
+import { getLowStockRows } from '../utils/inventoryStock';
 import './Sidebar_phar.css';
 
 import logoTop from '../assets/logo-top.png';
@@ -8,6 +11,22 @@ import cornerLeaves from '../assets/corner-leaves.png';
 export default function Sidebar_phar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [lowStockCount, setLowStockCount] = useState(0);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'inventory'),
+      (snapshot) => {
+        let count = 0;
+        snapshot.forEach((itemDoc) => {
+          count += getLowStockRows(itemDoc.data()).length;
+        });
+        setLowStockCount(count);
+      },
+      (error) => console.error('Error fetching sidebar low-stock count:', error)
+    );
+    return () => unsubscribe();
+  }, []);
 
   const menuItems = [
     { 
@@ -58,6 +77,11 @@ export default function Sidebar_phar() {
             >
               <i className={`bi ${item.icon} phar-menu-icon`}></i>
               <span className="phar-menu-label">{item.label}</span>
+              {item.path === '/pharmacy/low-stock' && lowStockCount > 0 && (
+                <span style={{ marginLeft: 'auto', minWidth: '20px', height: '20px', lineHeight: '20px', textAlign: 'center', borderRadius: '10px', background: '#dc2626', color: '#fff', fontSize: '10px', fontWeight: '700' }}>
+                  {lowStockCount}
+                </span>
+              )}
             </button>
           );
         })}

@@ -4,12 +4,20 @@ import { db } from '../../firebase/firebase';
 import { collection, onSnapshot, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import {
   BOTTLE_STOCK_UNITS,
+  BOTTLE_STOCK_DEFAULTS,
   calculateMedicineQuantity,
   calculateTotalQuantity,
+  isBottleMedicine,
   isBottleUnit
 } from '../../utils/medicineQuantity';
 import { ensureInventoryItemCode, getHighestInventoryItemNumber, isInventoryItemCode } from '../../utils/inventoryCodes';
-import { getInventoryIngredients, getInventoryQuantity, isLowStock } from '../../utils/inventoryStock';
+import {
+  DEFAULT_INVENTORY_THRESHOLD,
+  getInventoryIngredients,
+  getInventoryQuantity,
+  getInventoryThreshold,
+  isLowStock
+} from '../../utils/inventoryStock';
 
 // Component & CSS Imports
 import SidebarPhar from '../../components/Sidebar_phar';
@@ -23,8 +31,7 @@ const AYURVEDIC_MEDICINES = [
   'ජීවලේප ආලේපනය',
   'බුද්ධරාජ කල්ක (ගුලි)',
   'කොලසැලෙස්මා තෛලය',
-  'අරළු පෙති',
-  'කොලසැලෙස්මා තෛලය'
+  'අරළු පෙති'
 ];
 
 const DOSAGE_OPTIONS = [
@@ -77,7 +84,7 @@ export default function PharmacyInventory() {
   const [ingredients, setIngredients] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('');
-  const [bottleStock, setBottleStock] = useState({ bottle: '', halfBottle: '', quarterBottle: '' });
+  const [bottleStock, setBottleStock] = useState({ ...BOTTLE_STOCK_DEFAULTS });
   const [volumePerBottleMl, setVolumePerBottleMl] = useState('');
   const [minLevel, setMinLevel] = useState('');
   const [dosageOption, setDosageOption] = useState('');
@@ -86,11 +93,12 @@ export default function PharmacyInventory() {
   const [ingredientName, setIngredientName] = useState('');
   const [ingredientQuantity, setIngredientQuantity] = useState('');
   const [ingredientUnit, setIngredientUnit] = useState('');
-  const [ingredientMinLevel, setIngredientMinLevel] = useState('10');
+  const [ingredientMinLevel, setIngredientMinLevel] = useState(String(DEFAULT_INVENTORY_THRESHOLD));
 
   useEffect(() => {
     // 1. Inventory Real-time Listener
     const bottleStockMigrations = new Set();
+    const bottleMedicineSeeds = new Set();
     const unsubInventory = onSnapshot(collection(db, 'inventory'), (snapshot) => {
       const list = [];
       const seenNames = new Set();
@@ -99,6 +107,32 @@ export default function PharmacyInventory() {
         'MED'
       );
 
+      for (const medicineName of ['සරස්වතාරිෂ්ටය', 'කොලසැලෙස්මා තෛලය']) {
+        const medicineExists = snapshot.docs.some((itemDoc) =>
+          itemDoc.data().name?.trim() === medicineName
+        );
+        if (medicineExists || bottleMedicineSeeds.has(medicineName)) continue;
+
+        bottleMedicineSeeds.add(medicineName);
+        const medicineRef = doc(collection(db, 'inventory'));
+        const payload = {
+          name: medicineName,
+          category: medicineName === 'සරස්වතාරිෂ්ටය' ? 'Syrup' : 'Oil',
+          ingredients: getInventoryIngredients({ name: medicineName }),
+          quantity: BOTTLE_STOCK_DEFAULTS.bottle,
+          unit: 'බෝතල්',
+          bottleStock: { ...BOTTLE_STOCK_DEFAULTS },
+          minLevel: DEFAULT_INVENTORY_THRESHOLD,
+          dosageOption: '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+        ensureInventoryItemCode(db, medicineRef, 'MED', minimumMedicineNumber, payload).catch((error) => {
+          bottleMedicineSeeds.delete(medicineName);
+          console.error(`Error adding bottle medicine ${medicineName}:`, error);
+        });
+      }
+
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
         const trimmedName = data.name?.trim();
@@ -106,23 +140,33 @@ export default function PharmacyInventory() {
         if (trimmedName && !seenNames.has(trimmedName)) {
           seenNames.add(trimmedName);
           const itemCode = isInventoryItemCode('MED', data.itemCode) ? data.itemCode : '...';
+          const existingBottleStock = data.bottleStock;
           const needsBottleStockMigration =
-            trimmedName === 'සරස්වතාරිෂ්ටය' &&
-            data.itemCode === 'MED-1' &&
-            isBottleUnit(data.unit) &&
-            !data.bottleStock;
-          const bottleStock = data.bottleStock || (needsBottleStockMigration
+            isBottleMedicine(trimmedName) &&
+            (!existingBottleStock ||
+              BOTTLE_STOCK_UNITS.some(({ key }) => Number(existingBottleStock[key]) <= 0));
+          const bottleStock = isBottleMedicine(trimmedName)
             ? {
-                bottle: Number(data.quantity ?? 0),
-                halfBottle: 20,
-                quarterBottle: 30
+                bottle: Number(existingBottleStock?.bottle) > 0
+                  ? Number(existingBottleStock.bottle)
+                  : BOTTLE_STOCK_DEFAULTS.bottle,
+                halfBottle: Number(existingBottleStock?.halfBottle) > 0
+                  ? Number(existingBottleStock.halfBottle)
+                  : BOTTLE_STOCK_DEFAULTS.halfBottle,
+                quarterBottle: Number(existingBottleStock?.quarterBottle) > 0
+                  ? Number(existingBottleStock.quarterBottle)
+                  : BOTTLE_STOCK_DEFAULTS.quarterBottle
               }
-            : null);
+            : null;
           list.push({ id: docSnap.id, ...data, itemCode, ...(bottleStock ? { bottleStock } : {}) });
 
           if (needsBottleStockMigration && !bottleStockMigrations.has(docSnap.id)) {
             bottleStockMigrations.add(docSnap.id);
-            updateDoc(docSnap.ref, { bottleStock }).catch((error) => {
+            updateDoc(docSnap.ref, {
+              bottleStock,
+              quantity: bottleStock.bottle,
+              unit: 'බෝතල්'
+            }).catch((error) => {
               bottleStockMigrations.delete(docSnap.id);
               console.error('Error initializing bottle-size inventory:', error);
             });
@@ -213,7 +257,7 @@ export default function PharmacyInventory() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const usesBottleStock = medName === 'සරස්වතාරිෂ්ටය';
+    const usesBottleStock = isBottleMedicine(medName);
     if (!medName || (!usesBottleStock && (!quantity || !unit))) {
       alert('කරුණාකර අවශ්‍ය සියලුම තොරතුරු පුරවන්න.');
       return;
@@ -254,7 +298,7 @@ export default function PharmacyInventory() {
         unit: usesBottleStock ? 'බෝතල්' : unit,
         bottleStock: usesBottleStock ? parsedBottleStock : null,
         volumePerBottleMl: bottleUnit ? parsedBottleVolume : null,
-        minLevel: Number(minLevel || 10),
+        minLevel: Number(minLevel || DEFAULT_INVENTORY_THRESHOLD),
         dosageOption: dosageOption || '',
         updatedAt: serverTimestamp()
       };
@@ -264,10 +308,19 @@ export default function PharmacyInventory() {
         await updateDoc(medRef, payload);
         alert('ඖෂධ තොරතුරු සාර්ථකව යාවත්කාලීන කරන ලදී!');
       } else {
+        const existingMedicine = inventory.find((item) =>
+          item.name?.trim() === medName.trim()
+        );
+        if (existingMedicine) {
+          const medRef = doc(db, 'inventory', existingMedicine.id);
+          await updateDoc(medRef, payload);
+          alert('ඖෂධ තොගය සාර්ථකව යාවත්කාලීන කරන ලදී!');
+        } else {
         payload.createdAt = serverTimestamp();
         const medicineRef = doc(collection(db, 'inventory'));
         await ensureInventoryItemCode(db, medicineRef, 'MED', getHighestInventoryItemNumber(inventory, 'MED'), payload);
         alert('නව ඖෂධය සාර්ථකව එක් කරන ලදී!');
+        }
       }
 
       setShowModal(false);
@@ -289,7 +342,7 @@ export default function PharmacyInventory() {
         name: ingredientName.trim(),
         quantity: Number(ingredientQuantity),
         unit: ingredientUnit.trim(),
-        minLevel: Number(ingredientMinLevel || 10),
+        minLevel: Number(ingredientMinLevel || DEFAULT_INVENTORY_THRESHOLD),
         updatedAt: serverTimestamp()
       };
 
@@ -319,7 +372,7 @@ export default function PharmacyInventory() {
     setIngredientName(item?.name || '');
     setIngredientQuantity(item?.quantity ?? '');
     setIngredientUnit(item?.unit || '');
-    setIngredientMinLevel(item?.minLevel ?? '10');
+    setIngredientMinLevel(String(getInventoryThreshold(item || {})));
     setShowIngredientModal(true);
   };
 
@@ -341,9 +394,9 @@ export default function PharmacyInventory() {
     setIngredients(getInventoryIngredients({ name: AYURVEDIC_MEDICINES[0] }));
     setQuantity('');
     setUnit('Tablets');
-    setBottleStock({ bottle: '', halfBottle: '', quarterBottle: '' });
+    setBottleStock({ ...BOTTLE_STOCK_DEFAULTS });
     setVolumePerBottleMl('');
-    setMinLevel('10');
+    setMinLevel(String(DEFAULT_INVENTORY_THRESHOLD));
     setDosageOption(DOSAGE_OPTIONS[0]);
     setShowModal(true);
   };
@@ -357,9 +410,11 @@ export default function PharmacyInventory() {
     setQuantity(item.quantity || '');
     setUnit(item.unit || '');
     const bottleStock = item.bottleStock || {
-      bottle: item.quantity ?? '',
-      halfBottle: item.itemCode === 'MED-1' && item.name === 'සරස්වතාරිෂ්ටය' ? 20 : '',
-      quarterBottle: item.itemCode === 'MED-1' && item.name === 'සරස්වතාරිෂ්ටය' ? 30 : ''
+      bottle: isBottleMedicine(item.name)
+        ? (Number(item.quantity) > 0 ? Number(item.quantity) : BOTTLE_STOCK_DEFAULTS.bottle)
+        : (item.quantity ?? ''),
+      halfBottle: isBottleMedicine(item.name) ? BOTTLE_STOCK_DEFAULTS.halfBottle : '',
+      quarterBottle: isBottleMedicine(item.name) ? BOTTLE_STOCK_DEFAULTS.quarterBottle : ''
     };
     setBottleStock({
       bottle: String(bottleStock.bottle ?? ''),
@@ -367,7 +422,7 @@ export default function PharmacyInventory() {
       quarterBottle: String(bottleStock.quarterBottle ?? '')
     });
     setVolumePerBottleMl(item.volumePerBottleMl ?? '');
-    setMinLevel(item.minLevel || '');
+    setMinLevel(String(getInventoryThreshold(item)));
     setDosageOption(item.dosageOption || '');
     setShowModal(true);
   };
@@ -410,12 +465,27 @@ export default function PharmacyInventory() {
             🌿 ඖෂධශාලා තොග කළමනාකරණය
           </div>
 
-          <button 
-            onClick={() => activeTab === 'medicines' ? handleOpenAddModal() : handleOpenIngredientModal()}
-            style={{ background: '#1a5a38', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            {activeTab === 'medicines' ? '+ නව ඖෂධයක් එක් කරන්න' : '+ නව අමුද්‍රව්‍යයක් එක් කරන්න'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              type="button"
+              aria-label={`අඩු තොග දැනුම්දීම් ${lowStockItems.length}`}
+              onClick={() => navigate('/pharmacy/low-stock')}
+              style={{ position: 'relative', width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer' }}
+            >
+              <i className="bi bi-bell-fill"></i>
+              {lowStockItems.length > 0 && (
+                <span style={{ position: 'absolute', top: '-5px', right: '-5px', minWidth: '18px', height: '18px', lineHeight: '18px', borderRadius: '9px', background: '#dc2626', color: '#fff', fontSize: '10px', fontWeight: '700' }}>
+                  {lowStockItems.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => activeTab === 'medicines' ? handleOpenAddModal() : handleOpenIngredientModal()}
+              style={{ background: '#1a5a38', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              {activeTab === 'medicines' ? '+ නව ඖෂධයක් එක් කරන්න' : '+ නව අමුද්‍රව්‍යයක් එක් කරන්න'}
+            </button>
+          </div>
         </header>
 
         {lowStockItems.length > 0 && (
@@ -600,8 +670,12 @@ export default function PharmacyInventory() {
                 <select 
                   value={medName} 
                   onChange={(e) => {
-                    setMedName(e.target.value);
-                    setIngredients(getInventoryIngredients({ name: e.target.value }));
+                    const nextName = e.target.value;
+                    setMedName(nextName);
+                    setIngredients(getInventoryIngredients({ name: nextName }));
+                    if (isBottleMedicine(nextName)) {
+                      setBottleStock({ ...BOTTLE_STOCK_DEFAULTS });
+                    }
                   }}
                   required 
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', background: '#fff' }}
@@ -634,7 +708,7 @@ export default function PharmacyInventory() {
                 />
               </div>
 
-              {medName === 'සරස්වතාරිෂ්ටය' ? (
+              {isBottleMedicine(medName) ? (
                 <div>
                   <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '8px' }}>බෝතල් වර්ගය අනුව තොගය</label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -727,9 +801,10 @@ export default function PharmacyInventory() {
                 <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block' }}>අවම තොග මට්ටම (දැනුම්දීම් සඳහා)</label>
                 <input 
                   type="number" 
+                  min={DEFAULT_INVENTORY_THRESHOLD}
                   value={minLevel} 
                   onChange={(e) => setMinLevel(e.target.value)} 
-                  placeholder="10" 
+                  placeholder={String(DEFAULT_INVENTORY_THRESHOLD)} 
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }} 
                 />
               </div>
@@ -776,7 +851,7 @@ export default function PharmacyInventory() {
               </div>
               <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35' }}>
                 අවම තොග මට්ටම
-                <input type="number" min="0" step="any" value={ingredientMinLevel} onChange={(e) => setIngredientMinLevel(e.target.value)} required style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: '5px', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                <input type="number" min={DEFAULT_INVENTORY_THRESHOLD} step="any" value={ingredientMinLevel} onChange={(e) => setIngredientMinLevel(e.target.value)} required style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: '5px', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
               </label>
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button type="button" onClick={() => setShowIngredientModal(false)} style={{ flex: 1, background: '#f3ede2', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', color: '#5c4a42' }}>අවලංගු කරන්න</button>

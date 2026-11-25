@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 // Firebase Imports
 import { db } from '../../firebase/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { isLowStock } from '../../utils/inventoryStock';
+import { getLowStockRows } from '../../utils/inventoryStock';
 
 // Component Import
 import SidebarPhar from '../../components/Sidebar_phar';
@@ -22,8 +22,9 @@ export default function PharmacyDashboard() {
   const [stats, setStats] = useState({
     totalItems: 0,
     lowStockCount: 0,
-    reportsCount: 2,
-    todayIssued: 2,
+    pendingSupplyRequests: 0,
+    reportsCount: 0,
+    todayIssued: 0,
   });
 
   useEffect(() => {
@@ -37,9 +38,7 @@ export default function PharmacyDashboard() {
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           total++;
-          if (isLowStock(data)) {
-            lowStock++;
-          }
+          lowStock += getLowStockRows(data).length;
         });
 
         setStats((prev) => ({
@@ -51,7 +50,47 @@ export default function PharmacyDashboard() {
       (error) => console.error('Error fetching inventory stats:', error)
     );
 
-    return () => inventoryUnsub();
+    const supplyRequestUnsub = onSnapshot(
+      collection(db, 'low_stock_requests'),
+      (snapshot) => {
+        const pending = snapshot.docs.filter((requestDoc) =>
+          requestDoc.data().status !== 'approved'
+        ).length;
+        setStats((prev) => ({ ...prev, pendingSupplyRequests: pending }));
+      },
+      (error) => console.error('Error fetching supply requests:', error)
+    );
+
+    const prescriptionsUnsub = onSnapshot(
+      collection(db, 'pharmacy_prescriptions'),
+      (snapshot) => {
+        const today = new Date();
+        let todayIssuedCount = 0;
+        snapshot.forEach((prescriptionDoc) => {
+          const data = prescriptionDoc.data();
+          let prescriptionDate = null;
+          if (data.updatedAt?.toDate) prescriptionDate = data.updatedAt.toDate();
+          else if (data.createdAt?.toDate) prescriptionDate = data.createdAt.toDate();
+          else if (data.updatedAt) prescriptionDate = new Date(data.updatedAt);
+          else if (data.createdAt) prescriptionDate = new Date(data.createdAt);
+          const isToday = prescriptionDate &&
+            prescriptionDate.getDate() === today.getDate() &&
+            prescriptionDate.getMonth() === today.getMonth() &&
+            prescriptionDate.getFullYear() === today.getFullYear();
+          if (isToday && (data.status === 'Completed' || data.status === 'Issued')) {
+            todayIssuedCount++;
+          }
+        });
+        setStats((prev) => ({ ...prev, todayIssued: todayIssuedCount }));
+      },
+      (error) => console.error('Error fetching pharmacy prescriptions:', error)
+    );
+
+    return () => {
+      inventoryUnsub();
+      supplyRequestUnsub();
+      prescriptionsUnsub();
+    };
   }, []);
 
   return (
@@ -67,9 +106,15 @@ export default function PharmacyDashboard() {
             <span className="leaf-icon">🍃</span> ඔබට සුභ දවසක්!
           </div>
           <div className="top-bar-actions">
-            <button className="notification-icon" aria-label="දැනුම්දීම්">
+            <button
+              className="notification-icon"
+              aria-label="දැනුම්දීම්"
+              onClick={() => navigate('/pharmacy/low-stock')}
+            >
               <i className="bi bi-bell"></i>
-              <span className="badge">3</span>
+              {stats.lowStockCount > 0 && (
+                <span className="badge">{stats.lowStockCount}</span>
+              )}
             </button>
             <button className="user-profile">
               <i className="bi bi-person-circle"></i>
@@ -117,6 +162,25 @@ export default function PharmacyDashboard() {
                 <p>අවධානය පිණිස</p>
               </div>
             </div>
+
+            <div className="stat-card">
+              <div
+                className="stat-number"
+                style={{ color: '#2563eb', cursor: 'pointer' }}
+                onClick={() => navigate('/admin')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') navigate('/admin');
+                }}
+              >
+                {stats.pendingSupplyRequests}
+              </div>
+              <div className="stat-info">
+                <h4>පරිපාලක බලාපොරොත්තු ඉල්ලීම්</h4>
+                <p>සැපයුම් අනුමැතිය</p>
+              </div>
+            </div>
           </section>
 
           {/* Lower Grid (Quick Actions & Summary) */}
@@ -145,7 +209,7 @@ export default function PharmacyDashboard() {
               <ul className="summary-items">
                 <li>
                   <span>අද දින නිකුත් කළ වට්ටෝරු</span>
-                  <strong className="count">{stats.todayIssued || 2}</strong>
+                  <strong className="count">{stats.todayIssued}</strong>
                 </li>
               </ul>
             </div>

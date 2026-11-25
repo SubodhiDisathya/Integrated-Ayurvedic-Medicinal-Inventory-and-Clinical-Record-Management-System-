@@ -60,7 +60,24 @@ export default function DoctorCounter() {
       (error) => console.error('Error fetching doctor visits:', error)
     );
 
-    return () => visitsUnsub();
+    const prescriptionsUnsub = onSnapshot(
+      collection(db, 'pharmacy_prescriptions'),
+      (snapshot) => {
+        let treatmentCount = 0;
+        snapshot.forEach((prescriptionDoc) => {
+          const data = prescriptionDoc.data();
+          const medicines = Array.isArray(data.medicines) ? data.medicines : [];
+          if (medicines.some((medicine) => medicine.isIssued)) treatmentCount++;
+        });
+        setStats((prev) => ({ ...prev, treatmentsCount: treatmentCount }));
+      },
+      (error) => console.error('Error fetching treatment records:', error)
+    );
+
+    return () => {
+      visitsUnsub();
+      prescriptionsUnsub();
+    };
   }, []);
 
   return (
@@ -77,7 +94,9 @@ export default function DoctorCounter() {
           <div className="top-bar-actions">
             <button className="notification-icon" aria-label="දැනුම්දීම්">
               <i className="bi bi-bell"></i>
-              <span className="badge">3</span>
+              {stats.todayVisits > stats.consultationsCount && (
+                <span className="badge">{stats.todayVisits - stats.consultationsCount}</span>
+              )}
             </button>
             <button className="user-profile">
               <i className="bi bi-person-circle"></i>
@@ -100,7 +119,7 @@ export default function DoctorCounter() {
           {/* Stats Cards Section */}
           <section className="stats-grid-doctor">
             <div className="stat-card">
-              <div className="stat-number">{stats.treatmentsCount || 2}</div>
+              <div className="stat-number">{stats.treatmentsCount}</div>
               <div className="stat-info">
                 <h4>ප්‍රතිකාර ලේඛනය</h4>
                 <p>ලේඛනය</p>
@@ -108,7 +127,7 @@ export default function DoctorCounter() {
             </div>
 
             <div className="stat-card">
-              <div className="stat-number">{stats.consultationsCount || 8}</div>
+              <div className="stat-number">{stats.consultationsCount}</div>
               <div className="stat-info">
                 <h4>අද සාකච්ඡා</h4>
                 <p>සම්පූර්ණ</p>
@@ -153,7 +172,7 @@ export default function DoctorCounter() {
               <ul className="summary-items">
                 <li>
                   <span>සාකච්ඡා සම්පූර්ණ</span>
-                  <strong className="count">{stats.consultationsCount || 8}</strong>
+                  <strong className="count">{stats.consultationsCount}</strong>
                 </li>
               </ul>
             </div>

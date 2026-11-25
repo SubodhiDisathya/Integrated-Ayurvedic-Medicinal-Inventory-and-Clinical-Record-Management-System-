@@ -85,7 +85,7 @@ export default function SupplierPortal() {
   }, [navigate]);
 
   const pendingCount = requests.filter((request) =>
-    getRequestStatus(request.status).className === 'pending'
+    ['pending', 'approved'].includes(getRequestStatus(request.status).className)
   ).length;
   const completedCount = requests.filter((request) =>
     getRequestStatus(request.status).className === 'completed'

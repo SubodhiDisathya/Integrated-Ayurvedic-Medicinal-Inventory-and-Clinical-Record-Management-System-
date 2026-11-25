@@ -1,6 +1,8 @@
 import {
+  BOTTLE_STOCK_DEFAULTS,
   calculateMedicineQuantity,
   convertBottleStockToMilliliters,
+  isBottleMedicine,
   isBottleUnit,
   isMilliliterUnit
 } from './medicineQuantity';
@@ -82,6 +84,29 @@ describe('isBottleUnit', () => {
       expect(isBottleUnit(unit)).toBe(true);
     }
   );
+});
+
+describe('isBottleMedicine', () => {
+  test.each(['සරස්වතාරිෂ්ටය', 'කොලසැලෙස්මා තෛලය'])(
+    'treats %s as package bottle stock',
+    (name) => {
+      expect(isBottleMedicine(name)).toBe(true);
+    }
+  );
+
+  test('does not treat another medicine as package bottle stock', () => {
+    expect(isBottleMedicine('ත්‍රිඵලා පෙති')).toBe(false);
+  });
+});
+
+describe('BOTTLE_STOCK_DEFAULTS', () => {
+  test('provides bottle package defaults', () => {
+    expect(BOTTLE_STOCK_DEFAULTS).toEqual({
+      bottle: 20,
+      halfBottle: 30,
+      quarterBottle: 40
+    });
+  });
 });
 
 describe('convertBottleStockToMilliliters', () => {

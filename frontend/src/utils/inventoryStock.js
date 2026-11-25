@@ -1,5 +1,7 @@
 import { BOTTLE_STOCK_UNITS } from './medicineQuantity';
 
+export const DEFAULT_INVENTORY_THRESHOLD = 20;
+
 export const DEFAULT_INVENTORY_INGREDIENTS = {
   'ජීවලේප ආලේපනය': [
     'පාවට්ටා කොළ',
@@ -30,7 +32,9 @@ export const getInventoryQuantity = (item = {}) => {
 export const getInventoryThreshold = (item = {}) => {
   const value = item.minLevel ?? item.threshold;
   const threshold = Number(value);
-  return Number.isFinite(threshold) && threshold >= 0 ? threshold : 10;
+  return Number.isFinite(threshold) && threshold >= 0
+    ? Math.max(threshold, DEFAULT_INVENTORY_THRESHOLD)
+    : DEFAULT_INVENTORY_THRESHOLD;
 };
 
 export const getInventoryIngredients = (item = {}) => {
@@ -50,6 +54,29 @@ export const getInventoryIngredients = (item = {}) => {
 
 export const isLowStock = (item) =>
   getInventoryQuantity(item) < getInventoryThreshold(item);
+
+export const getInventoryStockRows = (item = {}) => {
+  if (item.bottleStock) {
+    return BOTTLE_STOCK_UNITS.map(({ key, label }) => ({
+      key,
+      packageUnit: key,
+      unit: label,
+      quantity: Number(item.bottleStock[key] ?? 0)
+    }));
+  }
+
+  return [{
+    key: 'default',
+    packageUnit: null,
+    unit: item.unit || 'ඒකක',
+    quantity: getInventoryQuantity(item)
+  }];
+};
+
+export const getLowStockRows = (item = {}) =>
+  getInventoryStockRows(item).filter((row) =>
+    isLowStock({ quantity: row.quantity, minLevel: getInventoryThreshold(item) })
+  );
 
 export const deductBottleStock = (stock = {}, issued = {}) => {
   const remaining = {};

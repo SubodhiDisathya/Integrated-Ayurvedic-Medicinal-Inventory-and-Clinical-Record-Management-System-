@@ -13,7 +13,7 @@ import {
   isBottleUnit,
   isMilliliterUnit
 } from '../../utils/medicineQuantity';
-import { deductBottleStock } from '../../utils/inventoryStock';
+import { deductBottleStock, getInventoryThreshold } from '../../utils/inventoryStock';
 
 // Component Import
 import SidebarPhar from '../../components/Sidebar_phar';
@@ -216,8 +216,7 @@ export default function PharmacyPatientPrescription() {
             }
             convertToMilliliters = true;
             const bottleVolume = Number(inventoryData.volumePerBottleMl);
-            const minLevel = Number(inventoryData.minLevel ?? 10);
-            minLevelInMl = (Number.isFinite(minLevel) && minLevel >= 0 ? minLevel : 10) * bottleVolume;
+            minLevelInMl = getInventoryThreshold(inventoryData) * bottleVolume;
           } else if (change.unit === 'ml' && !isMilliliterUnit(inventoryData.unit)) {
             throw new Error(`"${change.name}" ඖෂධයේ තොග ඒකකය mL හෝ බෝතල් ලෙස නිවැරදිව සකසන්න.`);
           }

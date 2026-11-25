@@ -1,17 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../firebase/firebase';
-import { collection, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, updateDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ensureInventoryItemCode, getHighestInventoryItemNumber, isInventoryItemCode } from '../../utils/inventoryCodes';
 import {
+  DEFAULT_INVENTORY_THRESHOLD,
   getInventoryIngredients,
   getInventoryQuantity,
   getInventoryThreshold,
+  getInventoryStockRows,
+  getLowStockRows,
   isLowStock
 } from '../../utils/inventoryStock';
-
+import { BOTTLE_STOCK_UNITS, isBottleMedicine } from '../../utils/medicineQuantity';
 import SidebarPhar from '../../components/Sidebar_phar';
 import './LowStockInventory.css';
+
+const parseInventoryDate = (value) => {
+  if (!value) return null;
+  const date = typeof value.toDate === 'function'
+    ? value.toDate()
+    : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const isExpiringSoon = (item, days = 30) => {
+  const expiryDate = parseInventoryDate(item.expiryDate);
+  if (!expiryDate) return false;
+  const now = new Date();
+  const limit = new Date(now);
+  limit.setDate(limit.getDate() + days);
+  return expiryDate >= now && expiryDate <= limit;
+};
 
 export default function LowStockInventory() {
   const navigate = useNavigate();
@@ -31,6 +51,9 @@ export default function LowStockInventory() {
   const [editStock, setEditStock] = useState('');
   const [editUnit, setEditUnit] = useState('');
   const [editIngredients, setEditIngredients] = useState('');
+  const [editBottleStock, setEditBottleStock] = useState({});
+  const [requestingStockKey, setRequestingStockKey] = useState('');
+  const [supplyRequests, setSupplyRequests] = useState([]);
 
   // ඖෂධවල නම සහ ඔබ ඉල්ලූ මුල් සිංහල අමුද්‍රව්‍ය අනුව නිවැරදි විස්තර ලබාදෙන Helper Function එක
   const getCustomInventoryDetails = (medicineName, originalIngredients, originalExpiry) => {
@@ -39,31 +62,31 @@ export default function LowStockInventory() {
     if (name.includes('ජීවලේප ආලේපනය')) {
       return {
         ingredients: 'පාවට්ටා කොළ, ආඩතෝඩා කොළ, වෙනිවෙල් ගැට, කහ, පොල්තෙල්',
-        expiryDate: 'ජනවාරි 05, 2027'
+        expiryDate: originalExpiry || ''
       };
     }
     if (name.includes('අරළු පෙති')) {
       return {
         ingredients: 'අරළු ගෙඩි',
-        expiryDate: 'දෙසැම්බර් 07, 2026'
+        expiryDate: originalExpiry || ''
       };
     }
     if (name.includes('බුද්ධරාජ කල්ක')) {
       return {
         ingredients: 'අරළු ගෙඩි, බුළු ගෙඩි, නෙල්ලි ගෙඩි, ඉඟුරු, ගම්මිරිස්, තිප්පිලි',
-        expiryDate: 'මාර්තු 08, 2027'
+        expiryDate: originalExpiry || ''
       };
     }
     if (name.includes('ත්‍රිඵලා පෙති')) {
       return {
         ingredients: 'අරළු ගෙඩි, බුළු ගෙඩි, නෙල්ලි ගෙඩි',
-        expiryDate: 'ජනවාරි 05, 2027'
+        expiryDate: originalExpiry || ''
       };
     }
     if (name.includes('සරස්වතාරිෂ්ටය')) {
       return {
         ingredients: 'වල්මි මුල්, වදකහ, ඉඟුරු, තිප්පිලි',
-        expiryDate: 'මාර්තු 08, 2027'
+        expiryDate: originalExpiry || ''
       };
     }
 
@@ -78,7 +101,6 @@ export default function LowStockInventory() {
     const unsubscribe = onSnapshot(collection(db, 'inventory'), (snapshot) => {
       const list = [];
       const seenNames = new Set();
-      const lowStockById = new Map();
       const minimumMedicineNumber = getHighestInventoryItemNumber(
         snapshot.docs.map((itemDoc) => itemDoc.data()),
         'MED'
@@ -102,6 +124,7 @@ export default function LowStockInventory() {
           currentStock: getInventoryQuantity(data),
           threshold: getInventoryThreshold(data),
           unit: data.unit || 'ඒකක',
+          bottleStock: data.bottleStock || null,
           expiryDate: customDetails.expiryDate
         };
 
@@ -111,18 +134,18 @@ export default function LowStockInventory() {
           });
         }
         list.push(item);
-        lowStockById.set(docSnap.id, isLowStock(item));
       });
 
-      const newlyLowItems = list.filter((item) =>
-        lowStockById.get(item.id) &&
-        (!previousLowStock.current || !previousLowStock.current.get(item.id))
+      const newlyLowItems = list.flatMap((item) =>
+        getLowStockRows(item).filter((row) =>
+          !previousLowStock.current?.get(`${item.id}-${row.packageUnit || 'default'}`)
+        ).map((row) => ({ ...item, alertStock: row.quantity, alertUnit: row.unit }))
       );
       if (newlyLowItems.length > 0) {
         setNotifications((current) => [
           ...newlyLowItems.map((item) => ({
             id: `${item.id}-${Date.now()}`,
-            message: `${item.name}: තොගය ${item.currentStock} ${item.unit} දක්වා අඩු වී ඇත.`
+            message: `${item.name} (${item.alertUnit}): තොගය ${item.alertStock} දක්වා අඩු වී ඇත.`
           })),
           ...current
         ].slice(0, 5));
@@ -133,18 +156,38 @@ export default function LowStockInventory() {
         if ('Notification' in window && window.Notification.permission === 'granted') {
           newlyLowItems.forEach((item) => {
             new window.Notification('අඩු තොග අනතුරු ඇඟවීම', {
-              body: `${item.name}: ඉතිරි තොගය ${item.currentStock} ${item.unit}.`
+              body: `${item.name} (${item.alertUnit}): ඉතිරි තොගය ${item.alertStock}.`
             });
           });
         }
       }
 
-      previousLowStock.current = lowStockById;
+      const nextLowStock = new Map();
+      list.forEach((item) => {
+        getLowStockRows(item).forEach((row) => {
+          nextLowStock.set(`${item.id}-${row.packageUnit || 'default'}`, true);
+        });
+      });
+      previousLowStock.current = nextLowStock;
       setInventory(list);
     }, (error) => {
       console.error('Error fetching inventory: ', error);
     });
 
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'low_stock_requests'),
+      (snapshot) => {
+        setSupplyRequests(snapshot.docs.map((requestDoc) => ({
+          id: requestDoc.id,
+          ...requestDoc.data()
+        })));
+      },
+      (error) => console.error('Error fetching low-stock request status:', error)
+    );
     return () => unsubscribe();
   }, []);
 
@@ -162,9 +205,10 @@ export default function LowStockInventory() {
   const handleOpenEditModal = (item) => {
     setCurrentId(item.id);
     setEditName(item.name || '');
-    setEditStock(item.currentStock ?? '');
+    setEditStock(item.bottleStock ? '' : (item.currentStock ?? ''));
     setEditUnit(item.unit || '');
     setEditIngredients(item.ingredients);
+    setEditBottleStock(item.bottleStock ? { ...item.bottleStock } : {});
     setShowModal(true);
   };
 
@@ -175,14 +219,33 @@ export default function LowStockInventory() {
       if (currentId && typeof currentId === 'string' && currentId.length > 5) {
         const medRef = doc(db, 'inventory', currentId);
         const newStockVal = Number(editStock);
-        
-        await updateDoc(medRef, {
-          quantity: newStockVal,
-          currentStock: newStockVal,
-          stock: newStockVal,
-          unit: editUnit,
-          ingredients: editIngredients.trim()
-        });
+        if (isBottleMedicine(editName) && Object.keys(editBottleStock).length > 0) {
+          const parsedBottleStock = {};
+          for (const { key } of BOTTLE_STOCK_UNITS) {
+            const parsedValue = Number(editBottleStock[key]);
+            if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+              alert('සියලුම බෝතල් වර්ග සඳහා වලංගු තොග ප්‍රමාණයක් ඇතුළත් කරන්න.');
+              return;
+            }
+            parsedBottleStock[key] = parsedValue;
+          }
+          await updateDoc(medRef, {
+            quantity: parsedBottleStock.bottle,
+            currentStock: parsedBottleStock.bottle,
+            stock: parsedBottleStock.bottle,
+            unit: 'බෝතල්',
+            bottleStock: parsedBottleStock,
+            ingredients: editIngredients.trim()
+          });
+        } else {
+          await updateDoc(medRef, {
+            quantity: newStockVal,
+            currentStock: newStockVal,
+            stock: newStockVal,
+            unit: editUnit,
+            ingredients: editIngredients.trim()
+          });
+        }
       }
 
       alert('ඖෂධ තොරතුරු සාර්ථකව යාවත්කාලීන කරන ලදී!');
@@ -193,12 +256,55 @@ export default function LowStockInventory() {
     }
   };
 
-  const displayInventory = inventory;
-  const lowStockAlerts = displayInventory.filter(isLowStock);
+  const handleCreateSupplyRequest = async (item) => {
+    const stockKey = `${item.id}-${item.stockRowKey || item.unit}`;
+    setRequestingStockKey(stockKey);
+    try {
+      await addDoc(collection(db, 'low_stock_requests'), {
+        inventoryId: item.id,
+        itemCode: item.itemCode,
+        itemName: item.name,
+        quantity: Math.max(0, getInventoryThreshold(item) - item.currentStock),
+        unit: item.unit,
+        packageUnit: item.stockRowKey && item.stockRowKey !== 'default' ? item.stockRowKey : null,
+        threshold: getInventoryThreshold(item),
+        currentStock: item.currentStock,
+        status: 'pending_admin',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      alert('අඩු තොග ඉල්ලීම පරිපාලක අනුමත කිරීම සඳහා යවන ලදී.');
+    } catch (error) {
+      console.error('Error creating low-stock supply request:', error);
+      alert('සැපයුම් ඉල්ලීම යැවීමේදී දෝෂයක් ඇති විය.');
+    } finally {
+      setRequestingStockKey('');
+    }
+  };
 
-  const filteredInventory = displayInventory.filter(item =>
+  const displayInventory = inventory;
+  const lowStockAlerts = displayInventory.flatMap((item) =>
+    getLowStockRows(item).map((row) => ({
+      ...item,
+      stockRowKey: row.key,
+      quantity: row.quantity,
+      currentStock: row.quantity,
+      unit: row.unit
+    }))
+  );
+
+  const filteredInventory = displayInventory.flatMap((item) =>
+    getInventoryStockRows(item).map((row) => ({
+      ...item,
+      stockRowKey: row.key,
+      quantity: row.quantity,
+      currentStock: row.quantity,
+      unit: row.unit
+    }))
+  ).filter(item =>
     (item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (item.ingredients && item.ingredients.toLowerCase().includes(searchTerm.toLowerCase()))
+    (item.ingredients && item.ingredients.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (item.unit && item.unit.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -274,7 +380,9 @@ export default function LowStockInventory() {
                 <div className="ls-stat-icon red"><i className="bi bi-x-circle-fill"></i></div>
                 <div>
                   <span className="ls-stat-title">තොග නොමැත</span>
-                  <h3 className="ls-stat-val">0</h3>
+                  <h3 className="ls-stat-val">
+                    {lowStockAlerts.filter((item) => item.currentStock === 0).length}
+                  </h3>
                 </div>
               </div>
 
@@ -282,7 +390,7 @@ export default function LowStockInventory() {
                 <div className="ls-stat-icon blue"><i className="bi bi-calendar-event-fill"></i></div>
                 <div>
                   <span className="ls-stat-title">කල් ඉකුත්වෙමින් පවතී</span>
-                  <h3 className="ls-stat-val">1</h3>
+                  <h3 className="ls-stat-val">{displayInventory.filter(isExpiringSoon).length}</h3>
                 </div>
               </div>
             </div>
@@ -305,7 +413,7 @@ export default function LowStockInventory() {
                   {filteredInventory.map((med) => {
                     const isLow = isLowStock(med);
                     return (
-                      <tr key={med.id}>
+                      <tr key={`${med.id}-${med.stockRowKey}`}>
                         <td>{med.itemCode}</td>
                         <td>
                           <strong>{med.name}</strong>
@@ -355,13 +463,36 @@ export default function LowStockInventory() {
               <div className="ls-alerts-list">
                 {lowStockAlerts.length > 0 ? (
                   lowStockAlerts.map((item) => (
-                    <div className="ls-alert-item" key={item.id}>
+                    <div className="ls-alert-item" key={`${item.id}-${item.stockRowKey}`}>
                       <div className="ls-alert-item-title">
                         <i className="bi bi-exclamation-circle-fill text-warning"></i>
                         <span><strong>{item.name}</strong></span>
                       </div>
                       <p>වත්මන් තොගය: <strong className="text-danger">{item.currentStock}</strong> ({item.unit})</p>
-                      <p className="ls-text-muted">අවම සීමාව: {item.threshold || 10}</p>
+                      <p className="ls-text-muted">අවම සීමාව: {item.threshold ?? DEFAULT_INVENTORY_THRESHOLD}</p>
+                      {(() => {
+                        const relatedRequest = supplyRequests.find((request) =>
+                          request.inventoryId === item.id &&
+                          (request.packageUnit || null) === (item.stockRowKey && item.stockRowKey !== 'default' ? item.stockRowKey : null)
+                        );
+                        if (relatedRequest) {
+                          return (
+                            <div style={{ marginTop: '8px', borderRadius: '8px', padding: '8px', background: relatedRequest.status === 'approved' ? '#ecfdf5' : '#fff7ed', color: relatedRequest.status === 'approved' ? '#065f46' : '#9a3412', textAlign: 'center', fontWeight: '600', fontSize: '12px' }}>
+                              {relatedRequest.status === 'approved' ? 'අනුමත වී Supplier වෙත යවා ඇත' : 'පරිපාලක අනුමතිය බලා'}
+                            </div>
+                          );
+                        }
+                        return (
+                      <button
+                        type="button"
+                        onClick={() => handleCreateSupplyRequest(item)}
+                        disabled={requestingStockKey === `${item.id}-${item.stockRowKey || item.unit}`}
+                        style={{ width: '100%', marginTop: '8px', border: 0, borderRadius: '8px', padding: '8px', background: '#1a5a38', color: '#fff', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}
+                      >
+                        {requestingStockKey === `${item.id}-${item.stockRowKey || item.unit}` ? 'යවමින්...' : 'පරිපාලක වෙත සැපයුම් ඉල්ලීම යවන්න'}
+                      </button>
+                        );
+                      })()}
                     </div>
                   ))
                 ) : (
@@ -428,27 +559,55 @@ export default function LowStockInventory() {
                 />
               </div>
 
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>වත්මන් තොග ප්‍රමාණය</label>
-                <input 
-                  type="number" 
-                  value={editStock} 
-                  onChange={(e) => setEditStock(e.target.value)} 
-                  required 
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }} 
-                />
-              </div>
+              {isBottleMedicine(editName) ? (
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '8px' }}>බෝතල් වර්ගය අනුව තොගය</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    {BOTTLE_STOCK_UNITS.map(({ key, label }) => (
+                      <div key={key}>
+                        <label style={{ fontSize: '12px', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>{label}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={editBottleStock[key] ?? ''}
+                          onChange={(e) => setEditBottleStock((previous) => ({
+                            ...previous,
+                            [key]: e.target.value
+                          }))}
+                          required
+                          style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>වත්මන් තොග ප්‍රමාණය</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editStock}
+                      onChange={(e) => setEditStock(e.target.value)}
+                      required
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
+                    />
+                  </div>
 
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>ඒකකය (Unit)</label>
-                <input 
-                  type="text" 
-                  value={editUnit} 
-                  onChange={(e) => setEditUnit(e.target.value)} 
-                  required 
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }} 
-                />
-              </div>
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>ඒකකය (Unit)</label>
+                    <input
+                      type="text"
+                      value={editUnit}
+                      onChange={(e) => setEditUnit(e.target.value)}
+                      required
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
+                    />
+                  </div>
+                </>
+              )}
 
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>අමුද්‍රව්‍ය (එක් පේළියකට එකක්)</label>

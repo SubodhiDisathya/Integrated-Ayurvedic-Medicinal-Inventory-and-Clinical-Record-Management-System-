@@ -15,6 +15,7 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import SidebarDoc from '../../components/SidebarDoctor';
+import { isBottleMedicine } from '../../utils/medicineQuantity';
 
 // CSS Import
 import './DoctorConsultation.css';
@@ -187,9 +188,9 @@ export default function DoctorConsultation() {
     }
 
     if (medicines.some((medicine) =>
-      medicine.name === 'සරස්වතාරිෂ්ටය' && !BOTTLE_DOSAGE_OPTIONS.includes(medicine.dosage)
+      isBottleMedicine(medicine.name) && !BOTTLE_DOSAGE_OPTIONS.includes(medicine.dosage)
     )) {
-      alert('සරස්වතාරිෂ්ටය සඳහා කාල බෝතල්, භාග බෝතල් හෝ බෝතල් එකක් තෝරන්න.');
+      alert('බෝතල් ඒකක සඳහා කාල බෝතල්, භාග බෝතල් හෝ බෝතල් එකක් තෝරන්න.');
       return;
     }
 
@@ -424,7 +425,7 @@ export default function DoctorConsultation() {
                           style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
                         />
                         <datalist id={`med-dosages-${index}`}>
-                          {(med.name === 'සරස්වතාරිෂ්ටය' ? BOTTLE_DOSAGE_OPTIONS : DOSAGE_OPTIONS).map((item, idx) => (
+                          {(isBottleMedicine(med.name) ? BOTTLE_DOSAGE_OPTIONS : DOSAGE_OPTIONS).map((item, idx) => (
                             <option key={idx} value={item} />
                           ))}
                         </datalist>

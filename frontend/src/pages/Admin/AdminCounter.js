@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 
 import { db } from '../../firebase/firebase';
-import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, onSnapshot } from 'firebase/firestore';
 
 // CSS File Import
 import './AdminCounter.css';
@@ -16,39 +16,55 @@ export default function AdminCounter() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ totalUsers: 0, doctors: 0, staff: 0, patients: 0 });
+  const [pendingSupplyRequests, setPendingSupplyRequests] = useState(0);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const usersSnapshot = await getDocs(collection(db, 'users'));
-        const usersList = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const updateUserStats = (usersList) => {
         setUsers(usersList);
 
         const doctorCount = usersList.filter(u => u.role === 'doctor').length;
         const staffCount = usersList.filter(u => u.role === 'staff' || u.role === 'pharmacist' || u.role === 'ticket_counter').length;
 
-        let patientCount = 0;
-        try {
-          const patientsSnapshot = await getDocs(collection(db, 'patients'));
-          patientCount = patientsSnapshot.size;
-        } catch (e) {
-          patientCount = usersList.filter(u => u.role === 'patient').length;
-        }
-        
         setStats({
           totalUsers: usersList.length,
           doctors: doctorCount,
           staff: staffCount,
-          patients: patientCount
+          patients: usersList.filter(u => u.role === 'patient').length
         });
-      } catch (error) {
-        console.error("දත්ත ලබාගැනීමේදී දෝෂයක් ඇති විය:", error);
-      } finally {
-        setLoading(false);
-      }
     };
 
-    fetchData();
+    const unsubscribeUsers = onSnapshot(
+      collection(db, 'users'),
+      (snapshot) => {
+        updateUserStats(snapshot.docs.map((userDoc) => ({ id: userDoc.id, ...userDoc.data() })));
+        setLoading(false);
+      },
+      (error) => {
+        console.error('දත්ත ලබාගැනීමේදී දෝෂයක් ඇති විය:', error);
+        setLoading(false);
+      }
+    );
+
+    const unsubscribePatients = onSnapshot(
+      collection(db, 'patients'),
+      (snapshot) => setStats((current) => ({ ...current, patients: snapshot.size })),
+      (error) => console.error('Error fetching patients:', error)
+    );
+    const unsubscribeSupplyRequests = onSnapshot(
+      collection(db, 'low_stock_requests'),
+      (snapshot) => {
+        setPendingSupplyRequests(snapshot.docs.filter((requestDoc) =>
+          requestDoc.data().status !== 'approved'
+        ).length);
+      },
+      (error) => console.error('Error fetching supply requests:', error)
+    );
+
+    return () => {
+      unsubscribeUsers();
+      unsubscribePatients();
+      unsubscribeSupplyRequests();
+    };
   }, []);
 
   const handleDeleteUser = async (userId) => {
@@ -70,7 +86,7 @@ export default function AdminCounter() {
 
         {/* --- Main Content Area --- */}
         <main className="doctor-main">
-          <RoleTopbar roleLabel="පරිපාලක" notificationCount={1} />
+          <RoleTopbar roleLabel="පරිපාලක" notificationCount={pendingSupplyRequests} />
 
           <div className="content-inner">
             {/* --- Hero Banner Section --- */}
@@ -114,6 +130,14 @@ export default function AdminCounter() {
                 <div className="stat-info">
                   <h4>ලියාපදිංචි රෝගීන්</h4>
                   <p>සමස්ත රෝගී දත්ත</p>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-number" style={{ color: '#dc2626' }}>{pendingSupplyRequests}</div>
+                <div className="stat-info">
+                  <h4>අඩු තොග ඉල්ලීම්</h4>
+                  <p>පරිපාලක අනුමැතිය බලා</p>
                 </div>
               </div>
             </section>

@@ -76,6 +76,20 @@ export const BOTTLE_STOCK_UNITS = [
   { key: 'quarterBottle', label: 'කාල බෝතල්' }
 ];
 
+export const BOTTLE_STOCK_DEFAULTS = {
+  bottle: 20,
+  halfBottle: 30,
+  quarterBottle: 40
+};
+
+export const BOTTLE_MEDICINE_NAMES = [
+  'සරස්වතාරිෂ්ටය',
+  'කොලසැලෙස්මා තෛලය'
+];
+
+export const isBottleMedicine = (name = '') =>
+  BOTTLE_MEDICINE_NAMES.includes(String(name).trim());
+
 export const isBottlePackageUnit = (unit = '') =>
   BOTTLE_STOCK_UNITS.some(({ key }) => key === unit);
 
