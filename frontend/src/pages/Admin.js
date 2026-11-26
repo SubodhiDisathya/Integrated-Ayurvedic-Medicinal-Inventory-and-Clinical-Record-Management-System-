@@ -2,7 +2,13 @@ import React, { useState, useEffect } from 'react';
 
 // Firebase Imports
 import { db } from '../firebase/firebase';
-import { collection, doc, deleteDoc, onSnapshot, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, deleteDoc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { getLowStockRequestIngredients } from '../utils/inventoryStock';
+import {
+  DEFAULT_MEDICINE_RECIPES,
+  ensureDefaultMedicineRecipes,
+  getRecipeIngredientsForRequest
+} from '../utils/medicineRecipes';
 
 // CSS File Import
 import './Admin.css';
@@ -18,6 +24,8 @@ export default function Admin() {
   const [stats, setStats] = useState({ totalUsers: 0, doctors: 0, staff: 0, patients: 0 });
   const [suppliers, setSuppliers] = useState([]);
   const [supplyRequests, setSupplyRequests] = useState([]);
+  const [inventoryItemsById, setInventoryItemsById] = useState({});
+  const [medicineRecipes, setMedicineRecipes] = useState(DEFAULT_MEDICINE_RECIPES);
   const [supplierSelections, setSupplierSelections] = useState({});
   const [acceptingRequestId, setAcceptingRequestId] = useState('');
 
@@ -71,11 +79,51 @@ export default function Admin() {
       },
       (error) => console.error('Error fetching low-stock supply requests:', error)
     );
+    const unsubscribeInventory = onSnapshot(
+      collection(db, 'inventory'),
+      (snapshot) => {
+        setInventoryItemsById(Object.fromEntries(
+          snapshot.docs.map((inventoryDoc) => [inventoryDoc.id, inventoryDoc.data()])
+        ));
+      },
+      (error) => console.error('Error fetching medicine ingredients:', error)
+    );
 
     return () => {
       unsubscribeUsers();
       unsubscribePatients();
       unsubscribeSupplyRequests();
+      unsubscribeInventory();
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    let unsubscribeRecipes;
+
+    const loadRecipes = async () => {
+      try {
+        await ensureDefaultMedicineRecipes(db);
+        if (!active) return;
+        unsubscribeRecipes = onSnapshot(
+          collection(db, 'medicine_recipes'),
+          (snapshot) => {
+            setMedicineRecipes(snapshot.docs.map((recipeDoc) => ({
+              id: recipeDoc.id,
+              ...recipeDoc.data()
+            })));
+          },
+          (error) => console.error('Error fetching medicine recipes:', error)
+        );
+      } catch (error) {
+        console.error('Error initializing medicine recipes:', error);
+      }
+    };
+
+    loadRecipes();
+    return () => {
+      active = false;
+      unsubscribeRecipes?.();
     };
   }, []);
 
@@ -91,50 +139,77 @@ export default function Admin() {
     }
   };
 
+  const getRequestIngredientNames = (request) => {
+    return getLowStockRequestIngredients(request, inventoryItemsById[request.inventoryId]);
+  };
+  const getRequestIngredientDetails = (request) => {
+    const recipeIngredients = getRecipeIngredientsForRequest(medicineRecipes, request);
+    if (recipeIngredients.length > 0) return recipeIngredients;
+    return getRequestIngredientNames(request).map((name) => ({ name, quantity: null, unit: '' }));
+  };
+  const formatIngredientDetails = (ingredients) => ingredients.map((ingredient) =>
+    ingredient.quantity == null
+      ? ingredient.name
+      : `${ingredient.name} ${ingredient.quantity}${ingredient.unit || ''}`
+  ).join(', ');
+
   const handleAcceptSupplyRequest = async (request) => {
-    const supplierId = supplierSelections[request.id];
-    if (!supplierId) {
-      alert('සැපයුම්කරු තෝරන්න.');
+    const supplierIds = supplierSelections[request.id] || [];
+    if (supplierIds.length === 0) {
+      alert('අවම වශයෙන් එක් සැපයුම්කරුවෙකු තෝරන්න.');
       return;
     }
 
-    const supplier = suppliers.find((item) => item.id === supplierId);
-    if (!supplier) {
-      alert('තෝරාගත් සැපයුම්කරු සොයාගත නොහැක.');
+    const ingredientDetails = getRequestIngredientDetails(request);
+    if (ingredientDetails.length === 0) {
+      alert('මෙම ඉල්ලීමට අවශ්‍ය අමුද්‍රව්‍ය සඳහන් කර නැත.');
+      return;
+    }
+    const ingredientNames = ingredientDetails.map((ingredient) => ingredient.name);
+
+    const selectedSuppliers = suppliers.filter((supplier) => supplierIds.includes(supplier.id));
+    if (selectedSuppliers.length !== supplierIds.length) {
+      alert('තෝරාගත් සැපයුම්කරුවෙකු සොයාගත නොහැක.');
       return;
     }
 
     setAcceptingRequestId(request.id);
     try {
       const requestNumber = `SR-${Date.now().toString().slice(-8)}`;
-      await addDoc(collection(db, 'supplier_requests'), {
-        requestNumber,
-        lowStockRequestId: request.id,
-        supplierId,
-        supplierName: supplier.companyName || supplier.name || supplier.email,
-        ingredientName: request.itemName,
-        itemName: request.itemName,
-        quantity: request.quantity,
-        unit: request.unit,
-        packageUnit: request.packageUnit || null,
-        currentStock: request.currentStock,
-        threshold: request.threshold,
-        status: 'approved',
-        expectedDate: null,
-        deliveryDate: null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+      const supplierNames = selectedSuppliers.map((supplier) =>
+        supplier.companyName || supplier.name || supplier.email
+      );
+      const batch = writeBatch(db);
+
+      selectedSuppliers.forEach((supplier, index) => {
+        batch.set(doc(collection(db, 'supplier_requests')), {
+          requestNumber,
+          lowStockRequestId: request.id,
+          supplierId: supplier.id,
+          supplierName: supplierNames[index],
+          ingredientName: formatIngredientDetails(ingredientDetails),
+          ingredientNames,
+          ingredients: ingredientDetails,
+          status: 'approved',
+          expectedDate: null,
+          deliveryDate: null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
       });
 
-      await updateDoc(doc(db, 'low_stock_requests', request.id), {
+      batch.update(doc(db, 'low_stock_requests', request.id), {
         status: 'approved',
-        supplierId,
-        supplierName: supplier.companyName || supplier.name || supplier.email,
+        supplierIds,
+        supplierNames,
+        supplierId: selectedSuppliers.length === 1 ? selectedSuppliers[0].id : null,
+        supplierName: supplierNames.join(', '),
         requestNumber,
         acceptedAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
 
+      await batch.commit();
       alert('ඉල්ලීම අනුමත කර සැපයුම්කරුට යවන ලදී.');
     } catch (error) {
       console.error('Error accepting low-stock supply request:', error);
@@ -142,6 +217,17 @@ export default function Admin() {
     } finally {
       setAcceptingRequestId('');
     }
+  };
+
+  const toggleSupplierSelection = (requestId, supplierId) => {
+    setSupplierSelections((current) => {
+      const selectedIds = current[requestId] || [];
+      const nextSelectedIds = selectedIds.includes(supplierId)
+        ? selectedIds.filter((selectedId) => selectedId !== supplierId)
+        : [...selectedIds, supplierId];
+
+      return { ...current, [requestId]: nextSelectedIds };
+    });
   };
 
   return (
@@ -213,9 +299,8 @@ export default function Admin() {
                 <table className="admin-users-table-custom">
                   <thead>
                     <tr>
-                      <th>අයිතමය</th>
+                      <th>අවශ්‍ය අමුද්‍රව්‍ය</th>
                       <th>වත්මන් තොගය</th>
-                      <th>ඉල්ලූ ප්‍රමාණය</th>
                       <th>සැපයුම්කරු</th>
                       <th>තත්ත්වය</th>
                       <th>ක්‍රියා</th>
@@ -224,37 +309,41 @@ export default function Admin() {
                   <tbody>
                     {supplyRequests.length === 0 ? (
                       <tr>
-                        <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>සැපයුම් ඉල්ලීම් නොමැත.</td>
+                        <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>සැපයුම් ඉල්ලීම් නොමැත.</td>
                       </tr>
                     ) : supplyRequests.map((request) => (
                       <tr key={request.id}>
-                        <td>{request.itemName}</td>
+                        <td>{formatIngredientDetails(getRequestIngredientDetails(request)) || '—'}</td>
                         <td>{request.currentStock} ({request.unit})</td>
-                        <td>{request.quantity} ({request.unit})</td>
                         <td>
                           {request.status === 'approved' ? (
-                            <strong>{request.supplierName || '—'}</strong>
+                            <strong>{request.supplierNames?.join(', ') || request.supplierName || '—'}</strong>
                           ) : (
-                            <select
-                              value={supplierSelections[request.id] || ''}
-                              onChange={(event) => setSupplierSelections((current) => ({
-                                ...current,
-                                [request.id]: event.target.value
-                              }))}
-                              style={{ width: '180px', padding: '8px', borderRadius: '8px', border: '1px solid #d6e0d8' }}
-                            >
-                              <option value="">සැපයුම්කරු තෝරන්න</option>
-                              {suppliers.map((supplier) => (
-                                <option key={supplier.id} value={supplier.id}>
-                                  {supplier.companyName || supplier.name || supplier.email}
-                                </option>
-                              ))}
-                            </select>
+                            <details className="supplier-multiselect">
+                              <summary>
+                                {supplierSelections[request.id]?.length
+                                  ? `${supplierSelections[request.id].length} සැපයුම්කරුවන් තෝරා ඇත`
+                                  : 'සැපයුම්කරුවන් තෝරන්න'}
+                              </summary>
+                              <div className="supplier-multiselect-options">
+                                {suppliers.map((supplier) => (
+                                  <label key={supplier.id} className="supplier-multiselect-option">
+                                    <input
+                                      type="checkbox"
+                                      checked={(supplierSelections[request.id] || []).includes(supplier.id)}
+                                      onChange={() => toggleSupplierSelection(request.id, supplier.id)}
+                                      disabled={acceptingRequestId === request.id}
+                                    />
+                                    <span>{supplier.companyName || supplier.name || supplier.email}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </details>
                           )}
                         </td>
                         <td>
                           <span className={`role-badge-custom ${request.status === 'approved' ? 'supplier' : 'staff'}`}>
-                            {request.status === 'approved' ? 'අනුමතයි' : 'පරිපාලක අනුමතිය බලා'}
+                            {request.status === 'approved' ? 'අනුමතයි' : 'පරිපාලක වෙත යවන ලදී'}
                           </span>
                         </td>
                         <td>

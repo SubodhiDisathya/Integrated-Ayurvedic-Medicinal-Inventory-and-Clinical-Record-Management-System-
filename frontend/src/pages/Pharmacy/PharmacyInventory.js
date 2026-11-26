@@ -456,10 +456,10 @@ export default function PharmacyInventory() {
   );
 
   return (
-    <div className="doctor-container">
+    <div className="doctor-container pharmacy-inventory-layout">
       <SidebarPhar />
 
-      <main className="doctor-main">
+      <main className="doctor-main pharmacy-inventory-main">
         <header className="top-bar">
           <div className="welcome-msg">
             🌿 ඖෂධශාලා තොග කළමනාකරණය

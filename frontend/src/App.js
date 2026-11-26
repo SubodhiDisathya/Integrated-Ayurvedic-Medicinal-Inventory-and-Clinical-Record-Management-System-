@@ -24,6 +24,8 @@ import SupplierPortal from './pages/SupplierPortal';
 
 import Admin from './pages/Admin';
 import AdminCounter from './pages/Admin/AdminCounter';
+import AdminMedicineRecipes from './pages/Admin/AdminMedicineRecipes';
+import AdminIngredients from './pages/Admin/AdminIngredients';
 import './roleTypography.css';
 import './roleSurfaces.css';
 
@@ -66,6 +68,8 @@ function App() {
         {/* Admin Route */}
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin/dashboard" element={<AdminCounter />} />
+        <Route path="/admin/medicine-recipes" element={<AdminMedicineRecipes />} />
+        <Route path="/admin/ingredients" element={<AdminIngredients />} />
       </Routes>
     </BrowserRouter>
   );

@@ -55,7 +55,7 @@ const getVolumeDose = (dosage) => {
 
 const getBottleDoseUnit = (dosage) => {
   const text = String(dosage || '').toLowerCase();
-  if (text.includes('කාල බෝතල්') || text.includes('බෝතල් කාලක්')) return 'quarterBottle';
+  if (text.includes('කාල බෝතල්') || text.includes('කාල බෝතලයක්') || text.includes('බෝතල් කාලක්')) return 'quarterBottle';
   if (text.includes('භාග බෝතල්') || text.includes('බෝතල් භාගයක්') || text.includes('භාග බෝතලයක්')) return 'halfBottle';
   if (text.includes('බෝතල් එකක්') || text.includes('බෝතලයක්')) return 'bottle';
   return null;
@@ -124,22 +124,24 @@ export const calculateMedicineQuantity = (medicine) => {
 
   const dosage = medicine.dosage || medicine.dosageOption || '';
   const bottleDoseUnit = getBottleDoseUnit(dosage);
-  const volumeDose = bottleDoseUnit ? null : getVolumeDose(dosage);
+  if (bottleDoseUnit) return { quantity: 1, unit: bottleDoseUnit };
+
+  const volumeDose = getVolumeDose(dosage);
   const explicitTotal = getNumber(medicine.totalQty) || getNumber(medicine.quantity);
   if (explicitTotal !== null) {
     return {
       quantity: explicitTotal,
-      unit: bottleDoseUnit || (volumeDose === null ? 'count' : 'ml')
+      unit: volumeDose === null ? 'count' : 'ml'
     };
   }
 
-  const perDose = bottleDoseUnit ? 1 : volumeDose === null ? getPerDoseCount(dosage) : volumeDose;
+  const perDose = volumeDose === null ? getPerDoseCount(dosage) : volumeDose;
   const timesPerDay = getTimesPerDay(medicine.frequency || dosage);
   const quantity = perDose * timesPerDay * getDays(medicine.duration || medicine.days);
 
   return {
     quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 0,
-    unit: bottleDoseUnit || (volumeDose === null ? 'count' : 'ml')
+    unit: volumeDose === null ? 'count' : 'ml'
   };
 };
 

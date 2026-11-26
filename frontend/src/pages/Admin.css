@@ -359,3 +359,51 @@
   background-color: #ef4444;
   color: white;
 }
+
+.admin-page-scope .supplier-multiselect {
+  min-width: 190px;
+}
+
+.admin-page-scope .supplier-multiselect summary {
+  padding: 8px 10px;
+  border: 1px solid #d6e0d8;
+  border-radius: 8px;
+  color: #334155;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.admin-page-scope .supplier-multiselect summary:focus-visible {
+  outline: 2px solid #1a5a38;
+  outline-offset: 2px;
+}
+
+.admin-page-scope .supplier-multiselect-options {
+  display: grid;
+  gap: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: 4px;
+  padding: 6px;
+  border: 1px solid #d6e0d8;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.admin-page-scope .supplier-multiselect-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.admin-page-scope .supplier-multiselect-option:hover {
+  background: #f0f7f2;
+}
+
+.admin-page-scope .supplier-multiselect-option input {
+  accent-color: #1a5a38;
+}

@@ -7,6 +7,7 @@ import {
   getInventoryItemCode,
   getInventoryQuantity,
   getInventoryThreshold,
+  getLowStockRequestIngredients,
   isLowStock
 } from './inventoryStock';
 
@@ -91,6 +92,9 @@ describe('inventory stock helpers', () => {
     expect(getInventoryIngredients({ name: 'බුද්ධරාජ කල්ක' })).toBe(
       'අරළු ගෙඩි\nබුළු ගෙඩි\nනෙල්ලි ගෙඩි\nඉඟුරු\nගම්මිරිස්\nතිප්පිලි'
     );
+    expect(getInventoryIngredients({ name: 'බුද්ධරාජ කල්ක(ගුලි)' })).toBe(
+      'අරළු ගෙඩි\nබුළු ගෙඩි\nනෙල්ලි ගෙඩි\nඉඟුරු\nගම්මිරිස්\nතිප්පිලි'
+    );
     expect(getInventoryIngredients({ name: 'ත්‍රිඵලා පෙති' })).toBe(
       'අරළු ගෙඩි\nබුළු ගෙඩි\nනෙල්ලි ගෙඩි'
     );
@@ -102,5 +106,17 @@ describe('inventory stock helpers', () => {
       ingredients: 'වෙනත් අමුද්‍රව්‍ය'
     })).toBe('වෙනත් අමුද්‍රව්‍ය');
     expect(getInventoryIngredients({ name: 'නොදන්නා ඖෂධය' })).toBe('');
+  });
+
+  test('resolves low-stock request ingredients without sending the medicine name', () => {
+    expect(getLowStockRequestIngredients({
+      itemName: 'අරළු පෙති',
+      ingredients: 'අරළු ගෙඩි, බුළු ගෙඩි'
+    })).toEqual(['අරළු ගෙඩි', 'බුළු ගෙඩි']);
+    expect(getLowStockRequestIngredients(
+      { itemName: 'අරළු පෙති' },
+      { name: 'අරළු පෙති' }
+    )).toEqual(['අරළු ගෙඩි']);
+    expect(getLowStockRequestIngredients({ itemName: 'නොදන්නා ඖෂධය' })).toEqual([]);
   });
 });

@@ -235,7 +235,7 @@ export default function Register() {
                     <option value="ticket_counter">ප්‍රවේශපත්‍ර කවුන්ටරය / Ticket Counter</option>
                     <option value="doctor">වෛද්‍යවරයා / Doctor</option>
                     <option value="pharmacist">ඖෂධවේදියා / Pharmacist</option>
-                    <option value="supplier">සැපයුම්කරු / Supplier</option>
+                    <option value="supplier">බාහිර සැපයුම්කරු / External Supplier</option>
                     <option value="admin">පරිපාලක / Admin</option>
                   </select>
                 </div>

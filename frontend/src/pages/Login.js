@@ -138,7 +138,7 @@ export default function Login() {
                   <option value="ticket">ප්‍රවේශපත්‍ර කවුන්ටරය/ Ticket Counter</option>
                   <option value="doctor">වෛද්‍යවරයා/ Doctor</option>
                   <option value="staff">ෆාමසිකරු / කාර්ය මණ්ඩලය/ Pharmacy Staff</option>
-                  <option value="supplier">සැපයුම්කරු/ Supplier</option>
+                  <option value="supplier"> බාහිර සැපයුම්කරු/External Supplier</option>
                   <option value="admin">පරිපාලක/ Admin</option>
                 </select>
               </div>

@@ -40,9 +40,9 @@ const MEDICINE_NAMES = [
 ];
 
 const BOTTLE_DOSAGE_OPTIONS = [
-  'කාල බෝතල්',
-  'භාග බෝතල්',
-  'බෝතල් එකක්'
+  'කාල බෝතලයක්',
+  'භාග බෝතලයක්',
+  'බෝතලයක්'
 ];
 
 const DOSAGE_OPTIONS = [
@@ -52,8 +52,8 @@ const DOSAGE_OPTIONS = [
   'ගුලි 2 බැගින්',
   'පැකට් 1 බැගින්',
   'පැකට් 2 බැගින්',
-  'කාල බෝතල්',
-  'භාග බෝතල්',
+  'කාල බෝතලයක්',
+  'භාග බෝතලයක්',
   'බෝතලයක්'
   
   
@@ -98,6 +98,7 @@ export default function DoctorConsultation() {
   const [diseases, setDiseases] = useState(['']);
   const [medicines, setMedicines] = useState([{ name: '', dosage: '', frequency: '', duration: '', isIssued: false }]);
   const [nextVisit, setNextVisit] = useState('');
+  const [nextVisitError, setNextVisitError] = useState('');
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   // Workflow States
@@ -190,7 +191,7 @@ export default function DoctorConsultation() {
     if (medicines.some((medicine) =>
       isBottleMedicine(medicine.name) && !BOTTLE_DOSAGE_OPTIONS.includes(medicine.dosage)
     )) {
-      alert('බෝතල් ඒකක සඳහා කාල බෝතල්, භාග බෝතල් හෝ බෝතල් එකක් තෝරන්න.');
+      alert('බෝතල් ඒකක සඳහා කාල බෝතලයක්, භාග බෝතලයක් හෝ බෝතලයක් තෝරන්න.');
       return;
     }
 
@@ -236,9 +237,10 @@ export default function DoctorConsultation() {
           history: arrayUnion(newHistoryItem)
         });
       }
+
     } catch (error) {
       console.error('Firebase Error: ', error);
-      alert('දත්ත Firebase වෙත ඇතුළත් කිරීමේදී දෝෂයක් සිදු විය.');
+      alert('ඖෂධාලයට යොමු කිරීමේදී දෝෂයක් සිදු විය.');
     } finally {
       setLoading(false);
     }
@@ -246,10 +248,11 @@ export default function DoctorConsultation() {
 
   const handleSendToTicketCounter = async () => {
     if (!nextVisit) {
-      alert('කරුණාකර නැවත පැමිණිය යුතු දිනය තෝරන්න!');
+      setNextVisitError('කරුණාකර නැවත පැමිණිය යුතු දිනය තෝරන්න!');
       return;
     }
 
+    setNextVisitError('');
     setLoading(true);
 
     try {
@@ -257,13 +260,13 @@ export default function DoctorConsultation() {
         patientId: patient.id || '',
         patientName: patient.name || '',
         patientPhone: patient.phone || '',
+        previousVisitDate: new Date().toISOString().split('T')[0],
         nextVisitDate: nextVisit,
         prescriptionId: currentPrescriptionId || '',
         status: 'Scheduled',
         createdAt: serverTimestamp(),
       });
 
-      alert(`Step 2 සාර්ථකයි: නැවත පැමිණෙන දිනය Ticket Counter වෙත යවන ලදී!`);
       navigate('/doctor/todays-patients');
     } catch (error) {
       console.error('Firebase Error: ', error);
@@ -491,12 +494,12 @@ export default function DoctorConsultation() {
               {!isPharmacySent ? (
                 <div className="form-actions-row">
                   <button type="submit" className="send-pharmacy-btn" disabled={loading}>
-                    {loading ? 'Firebase වෙත සුරැකෙමින් පවතී...' : '🏥 ඖෂධාලය (Pharmacy) වෙත යවන්න'}
+                    {loading ? 'ඖෂධාලය වෙත යොමු කරමින් පවතී...' : '🏥 ඖෂධාලය (Pharmacy) වෙත යවන්න'}
                   </button>
                 </div>
               ) : (
                 <div className="status-success-badge">
-                Pharmacy වෙත සාර්ථකව යවන ලදී ✅ 
+                Pharmacy වෙත සාර්ථකව යොමු කරන ලදී ✅ 
                 </div>
               )}
             </form>
@@ -519,9 +522,13 @@ export default function DoctorConsultation() {
                 <input
                   type="date"
                   value={nextVisit}
-                  onChange={(e) => setNextVisit(e.target.value)}
+                  onChange={(e) => {
+                    setNextVisit(e.target.value);
+                    setNextVisitError('');
+                  }}
                   disabled={!isPharmacySent || loading}
                 />
+                {nextVisitError && <p className="step-warning-text" role="alert">{nextVisitError}</p>}
               </div>
             </div>
 
@@ -532,7 +539,7 @@ export default function DoctorConsultation() {
                 onClick={handleSendToTicketCounter}
                 disabled={!isPharmacySent || loading}
               >
-                {loading ? 'සුරැකෙමින් පවතී...' : '🎟️ නැවත පැමිණෙන දිනය Ticket Counter වෙත යවන්න'}
+                {loading ? 'සුරැකෙමින් පවතී...' : '🎟️ නැවත පැමිණෙන දිනය Ticket Counter වෙත යොමු කරන්න'}
               </button>
             </div>
           </div>

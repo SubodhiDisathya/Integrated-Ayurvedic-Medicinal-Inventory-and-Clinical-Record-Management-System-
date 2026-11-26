@@ -9,6 +9,7 @@ import {
   getInventoryQuantity,
   getInventoryThreshold,
   getInventoryStockRows,
+  parseInventoryIngredientNames,
   getLowStockRows,
   isLowStock
 } from '../../utils/inventoryStock';
@@ -91,7 +92,7 @@ export default function LowStockInventory() {
     }
 
     return {
-      ingredients: originalIngredients || 'අමුද්‍රව්‍ය සඳහන් කර නැත',
+      ingredients: originalIngredients || '',
       expiryDate: originalExpiry || '—'
     };
   };
@@ -264,6 +265,8 @@ export default function LowStockInventory() {
         inventoryId: item.id,
         itemCode: item.itemCode,
         itemName: item.name,
+        ingredients: item.ingredients,
+        ingredientNames: parseInventoryIngredientNames(item.ingredients),
         quantity: Math.max(0, getInventoryThreshold(item) - item.currentStock),
         unit: item.unit,
         packageUnit: item.stockRowKey && item.stockRowKey !== 'default' ? item.stockRowKey : null,
@@ -273,7 +276,6 @@ export default function LowStockInventory() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
-      alert('අඩු තොග ඉල්ලීම පරිපාලක අනුමත කිරීම සඳහා යවන ලදී.');
     } catch (error) {
       console.error('Error creating low-stock supply request:', error);
       alert('සැපයුම් ඉල්ලීම යැවීමේදී දෝෂයක් ඇති විය.');
@@ -418,7 +420,7 @@ export default function LowStockInventory() {
                         <td>
                           <strong>{med.name}</strong>
                         </td>
-                        <td className="ls-ingredients-td">{med.ingredients}</td>
+                        <td className="ls-ingredients-td">{med.ingredients || 'අමුද්‍රව්‍ය සඳහන් කර නැත'}</td>
                         <td>
                           <strong>{med.currentStock}</strong> ({med.unit})
                           {isLow && (
@@ -478,7 +480,7 @@ export default function LowStockInventory() {
                         if (relatedRequest) {
                           return (
                             <div style={{ marginTop: '8px', borderRadius: '8px', padding: '8px', background: relatedRequest.status === 'approved' ? '#ecfdf5' : '#fff7ed', color: relatedRequest.status === 'approved' ? '#065f46' : '#9a3412', textAlign: 'center', fontWeight: '600', fontSize: '12px' }}>
-                              {relatedRequest.status === 'approved' ? 'අනුමත වී Supplier වෙත යවා ඇත' : 'පරිපාලක අනුමතිය බලා'}
+                              {relatedRequest.status === 'approved' ? 'අනුමත වී Supplier වෙත යවා ඇත' : 'පරිපාලක වෙත යවන ලදී'}
                             </div>
                           );
                         }

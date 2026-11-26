@@ -1,6 +1,7 @@
 .phar-sidebar {
   width: 270px;
-  height: 100vh;
+  min-height: 100vh;
+  height: auto;
   background: linear-gradient(180deg, #0e3320 0%, #16462d 50%, #0d2a1b 100%);
   color: #ffffff;
   display: flex;

@@ -19,6 +19,16 @@ const menuItems = [
     path: '/admin/dashboard',
     label: 'පරිශීලක කළමනාකරණය',
     icon: 'bi-people-fill'
+  },
+  {
+    path: '/admin/medicine-recipes',
+    label: 'ඖෂධ වට්ටෝරු',
+    icon: 'bi-journal-medical'
+  },
+  {
+    path: '/admin/ingredients',
+    label: 'අමුද්‍රව්‍ය අංක',
+    icon: 'bi-list-ol'
   }
 ];
 

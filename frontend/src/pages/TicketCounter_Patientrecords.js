@@ -121,7 +121,6 @@ export default function PatientRecords() {
         createdAt: serverTimestamp()
       });
 
-      alert(`${patient.fullName} සාර්ථකව වෛද්‍යවරයා වෙත යොමු කරන ලදී!`);
     } catch (error) {
       console.error('Error sending patient to doctor:', error);
       alert('වෛද්‍යවරයා වෙත යොමු කිරීමට අපොහොසත් විය. නැවත උත්සාහ කරන්න.');
@@ -235,10 +234,10 @@ export default function PatientRecords() {
                             className="btn-queue"
                             onClick={() => handleSendToDoctor(patient)}
                             disabled={sendingId === patient.id}
-                            title="වෛද්‍යවරයා වෙත යවන්න"
+                            title="වෛද්‍යවරයා වෙත යොමු කරන්න"
                           >
                             <i className="bi bi-person-check-fill" style={{ marginRight: '5px' }}></i>
-                            {sendingId === patient.id ? 'යවමින්...' : 'වෛද්‍යවරයාට යවන්න'}
+                            {sendingId === patient.id ? 'යවමින්...' : 'වෛද්‍යවරයා වෙත යොමු කරන්න'}
                           </button>
                         </td>
                       </tr>

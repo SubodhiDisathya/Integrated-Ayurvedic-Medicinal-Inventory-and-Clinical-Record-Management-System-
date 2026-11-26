@@ -28,6 +28,7 @@ export default function PharmacyPatientPrescription() {
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [completionErrors, setCompletionErrors] = useState({});
 
   useEffect(() => {
     const q = query(
@@ -93,6 +94,7 @@ export default function PharmacyPatientPrescription() {
   };
 
   const handleCompletePrescription = async (prescriptionId) => {
+    setCompletionErrors((current) => ({ ...current, [prescriptionId]: '' }));
     try {
       const prescriptionToIssue = prescriptions.find(p => p.id === prescriptionId);
 
@@ -260,10 +262,14 @@ export default function PharmacyPatientPrescription() {
         transaction.update(prescriptionRef, { status: 'Completed' });
       });
 
-      alert('ඖෂධ සාර්ථකව නිකුත් කර තොගය යාවත්කාලීන කරන ලදී!');
     } catch (error) {
       console.error("Error updating prescription status: ", error);
-      alert(error instanceof Error ? error.message : 'බෙහෙත් තුණ්ඩුව සම්පූර්ණ කිරීමේදී දෝෂයක් ඇති විය.');
+      setCompletionErrors((current) => ({
+        ...current,
+        [prescriptionId]: error instanceof Error
+          ? error.message
+          : 'බෙහෙත් තුණ්ඩුව සම්පූර්ණ කිරීමේදී දෝෂයක් ඇති විය.'
+      }));
     }
   };
 
@@ -378,6 +384,11 @@ export default function PharmacyPatientPrescription() {
                       >
                         {allChecked ? '✅ නිකුත් කිරීම සම්පූර්ණ කරන්න' : '⏳ සියලුම ඖෂධ තෝරන්න'}
                       </button>
+                      {completionErrors[item.id] && (
+                        <p role="alert" style={{ margin: '10px 0 0', color: '#b91c1c', fontSize: '13px' }}>
+                          {completionErrors[item.id]}
+                        </p>
+                      )}
                     </div>
                   );
                 })}

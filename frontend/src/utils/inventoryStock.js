@@ -19,6 +19,14 @@ export const DEFAULT_INVENTORY_INGREDIENTS = {
     'ගම්මිරිස්',
     'තිප්පිලි'
   ],
+  'බුද්ධරාජ කල්ක(ගුලි)': [
+    'අරළු ගෙඩි',
+    'බුළු ගෙඩි',
+    'නෙල්ලි ගෙඩි',
+    'ඉඟුරු',
+    'ගම්මිරිස්',
+    'තිප්පිලි'
+  ],
   'ත්‍රිඵලා පෙති': ['අරළු ගෙඩි', 'බුළු ගෙඩි', 'නෙල්ලි ගෙඩි'],
   'සරස්වතාරිෂ්ටය': ['වැල්මී මුල්', 'වදකහ', 'ඉඟුරු', 'තිප්පිලි']
 };
@@ -50,6 +58,25 @@ export const getInventoryIngredients = (item = {}) => {
   }
 
   return DEFAULT_INVENTORY_INGREDIENTS[item.name?.trim()]?.join('\n') || '';
+};
+
+export const parseInventoryIngredientNames = (value) => {
+  const ingredients = Array.isArray(value) ? value : String(value || '').split(/[,\n]/);
+  return ingredients.map((ingredient) => String(ingredient).trim()).filter(Boolean);
+};
+
+export const getLowStockRequestIngredients = (request = {}, inventoryItem) => {
+  const storedIngredients = parseInventoryIngredientNames(
+    Array.isArray(request.ingredientNames) && request.ingredientNames.length
+      ? request.ingredientNames
+      : request.ingredients
+  );
+  if (storedIngredients.length || !inventoryItem) return storedIngredients;
+
+  return parseInventoryIngredientNames(getInventoryIngredients({
+    ...inventoryItem,
+    name: inventoryItem.name || request.itemName
+  }));
 };
 
 export const isLowStock = (item) =>

@@ -46,12 +46,15 @@ describe('calculateMedicineQuantity', () => {
   });
 
   test.each([
-    ['කාල බෝතල්', 'උදේ, සවස', 'දින 3ක්', { quantity: 6, unit: 'quarterBottle' }],
-    ['භාග බෝතල්', 'උදේ, දවල්, රාත්‍රී', 'දින 2ක්', { quantity: 6, unit: 'halfBottle' }],
-    ['බෝතල් කාලක්', 'උදේ, සවස', 'දින 3ක්', { quantity: 6, unit: 'quarterBottle' }],
-    ['බෝතල් භාගයක්', 'උදේ, දවල්, රාත්‍රී', 'දින 2ක්', { quantity: 6, unit: 'halfBottle' }],
-    ['බෝතල් එකක්', 'උදේ', 'දින 5ක්', { quantity: 5, unit: 'bottle' }]
-  ])('calculates %s bottle doses in the matching stock unit', (dosage, frequency, duration, expected) => {
+    ['කාල බෝතල්', 'උදේ, සවස', 'දින 3ක්', { quantity: 1, unit: 'quarterBottle' }],
+    ['කාල බෝතලයක්', 'උදේ, සවස', 'දින 3ක්', { quantity: 1, unit: 'quarterBottle' }],
+    ['භාග බෝතල්', 'උදේ, දවල්, රාත්‍රී', 'දින 2ක්', { quantity: 1, unit: 'halfBottle' }],
+    ['භාග බෝතලයක්', 'උදේ, දවල්, රාත්‍රී', 'දින 2ක්', { quantity: 1, unit: 'halfBottle' }],
+    ['බෝතල් කාලක්', 'උදේ, සවස', 'දින 3ක්', { quantity: 1, unit: 'quarterBottle' }],
+    ['බෝතල් භාගයක්', 'උදේ, දවල්, රාත්‍රී', 'දින 2ක්', { quantity: 1, unit: 'halfBottle' }],
+    ['බෝතලයක්', 'උදේ', 'දින 5ක්', { quantity: 1, unit: 'bottle' }],
+    ['බෝතල් එකක්', 'උදේ', 'දින 5ක්', { quantity: 1, unit: 'bottle' }]
+  ])('issues one %s package per patient in the matching stock unit', (dosage, frequency, duration, expected) => {
     expect(calculateMedicineQuantity({ dosage, frequency, duration })).toEqual(expected);
   });
 

@@ -90,6 +90,7 @@ export default function SupplierPortal() {
   const completedCount = requests.filter((request) =>
     getRequestStatus(request.status).className === 'completed'
   ).length;
+  const showQuantityColumn = requests.some((request) => request.quantity != null);
 
   const goToSection = (section) => {
     setActiveSection(section);
@@ -194,7 +195,7 @@ export default function SupplierPortal() {
                     <tr>
                       <th>ඉල්ලීම් අංකය</th>
                       <th>අමුද්‍රව්‍ය</th>
-                      <th>ඉල්ලූ ප්‍රමාණය</th>
+                      {showQuantityColumn && <th>ඉල්ලූ ප්‍රමාණය</th>}
                       <th>අපේක්ෂිත දිනය</th>
                       <th>තත්ත්වය</th>
                     </tr>
@@ -202,18 +203,32 @@ export default function SupplierPortal() {
                   <tbody>
                     {requests.length ? requests.map((request) => {
                       const status = getRequestStatus(request.status);
+                      const ingredientNames = Array.isArray(request.ingredientNames)
+                        ? request.ingredientNames
+                        : null;
+                      const ingredientDetails = Array.isArray(request.ingredients)
+                        ? request.ingredients.filter((ingredient) => ingredient?.name)
+                        : [];
                       return (
                         <tr key={request.id}>
                           <td>{request.requestNumber || request.code || request.id}</td>
-                          <td>{request.ingredientName || request.ingredient || request.itemName || '—'}</td>
-                          <td>{request.quantity != null ? `${request.quantity} ${request.unit || ''}` : '—'}</td>
+                          <td>{ingredientDetails.length
+                            ? ingredientDetails.map((ingredient) =>
+                              `${ingredient.name}${ingredient.quantity != null ? ` ${ingredient.quantity}${ingredient.unit || ''}` : ''}`
+                            ).join(', ')
+                            : ingredientNames
+                              ? ingredientNames.join(', ')
+                              : request.ingredientName || request.ingredient || request.itemName || '—'}</td>
+                          {showQuantityColumn && (
+                            <td>{request.quantity != null ? `${request.quantity} ${request.unit || ''}` : '—'}</td>
+                          )}
                           <td>{formatDate(request.expectedDate || request.deliveryDate)}</td>
                           <td><span className={`supplier-status ${status.className}`}>{status.label}</span></td>
                         </tr>
                       );
                     }) : (
                       <tr>
-                        <td colSpan="5" className="supplier-empty-cell">
+                        <td colSpan={showQuantityColumn ? 5 : 4} className="supplier-empty-cell">
                           <i className="bi bi-inbox" />
                           <span>දැනට ඔබට ලැබුණු සැපයුම් ඉල්ලීම් නොමැත.</span>
                         </td>

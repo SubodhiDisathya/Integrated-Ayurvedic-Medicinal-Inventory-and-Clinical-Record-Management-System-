@@ -18,6 +18,9 @@ export default function TicketCounter() {
     notYetVisited: 0,
     sentToDoctor: 0
   });
+  const [doctorScheduledVisits, setDoctorScheduledVisits] = useState([]);
+  const [scheduledVisitsLoading, setScheduledVisitsLoading] = useState(true);
+  const [scheduledVisitsError, setScheduledVisitsError] = useState('');
 
   useEffect(() => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -67,9 +70,38 @@ export default function TicketCounter() {
       }));
     });
 
+    const scheduledVisitsUnsub = onSnapshot(
+      collection(db, 'ticket_counter_visits'),
+      (snapshot) => {
+        const scheduledVisits = snapshot.docs
+          .map((docSnap) => {
+            const visit = { id: docSnap.id, ...docSnap.data() };
+            const createdAtDate = typeof visit.createdAt?.toDate === 'function'
+              ? visit.createdAt.toDate().toISOString().split('T')[0]
+              : String(visit.createdAt || '').slice(0, 10);
+            return {
+              ...visit,
+              previousVisitDate: visit.previousVisitDate || createdAtDate
+            };
+          })
+          .filter((visit) => visit.status === 'Scheduled' && visit.nextVisitDate === todayStr)
+          .sort((first, second) =>
+            String(first.nextVisitDate || '').localeCompare(String(second.nextVisitDate || ''))
+          );
+        setDoctorScheduledVisits(scheduledVisits);
+        setScheduledVisitsLoading(false);
+      },
+      (error) => {
+        console.error('Error fetching doctor-scheduled visits:', error);
+        setScheduledVisitsError('නැවත පැමිණීමේ දින ලබාගැනීමට නොහැකි විය.');
+        setScheduledVisitsLoading(false);
+      }
+    );
+
     return () => {
       patientsUnsub();
       visitsUnsub();
+      scheduledVisitsUnsub();
     };
   }, []);
 
@@ -169,6 +201,32 @@ export default function TicketCounter() {
                 </li>
               </ul>
             </div>
+          </section>
+
+          <section style={{ marginTop: '24px', background: '#fffdf9', borderRadius: '12px', padding: '24px', border: '1px solid #e4ddc9' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: '#0f3d27', margin: '0 0 20px 0' }}>
+              <span style={{ color: '#c78a3d', fontWeight: '900' }}>|</span> අද නැවත පැමිණිය යුතු රෝගීන්
+            </h3>
+            {scheduledVisitsLoading ? (
+              <p>දින ලබාගනිමින්...</p>
+            ) : scheduledVisitsError ? (
+              <p role="alert" style={{ color: '#b91c1c' }}>{scheduledVisitsError}</p>
+            ) : doctorScheduledVisits.length === 0 ? (
+              <p>අද නැවත පැමිණීමට නියමිත රෝගීන් නැත.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {doctorScheduledVisits.map((visit) => (
+                  <div key={visit.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', padding: '12px 16px', background: '#e5eedb', borderRadius: '8px' }}>
+                    <div>
+                      <strong style={{ color: '#0f3d27' }}>{visit.patientName || 'නම සඳහන් නැත'}</strong>
+                      {visit.patientId && <span style={{ marginLeft: '10px' }}>{visit.patientId}</span>}
+                      {visit.patientPhone && <div>{visit.patientPhone}</div>}
+                    </div>
+                    <strong>පෙර පැමිණි දිනය: {visit.previousVisitDate || '—'}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
         </div>
