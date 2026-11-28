@@ -173,16 +173,6 @@
   line-height: 1.4;
 }
 
-.ls-status-pill {
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.ls-status-pill.ok { background: #fef3c7; color: #d97706; }
-.ls-status-pill.low { background: #fee2e2; color: #dc2626; }
-
 .ls-tag-low {
   display: block;
   font-size: 11px;
@@ -197,7 +187,7 @@
   gap: 16px;
 }
 
-.ls-alert-card, .ls-quick-actions-card, .ls-notifications-card {
+.ls-alert-card {
   grid-row: auto;
   background: #ffffff;
   border-radius: 12px;
@@ -233,51 +223,6 @@
 }
 
 .ls-alert-item-title { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
-
-/* Quick Action Buttons */
-.ls-btn-green {
-  width: 100%;
-  background: #123e26;
-  color: #fff;
-  border: none;
-  padding: 10px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  margin-top: 10px;
-}
-
-.ls-btn-outline {
-  width: 100%;
-  background: #fff;
-  color: #334155;
-  border: 1px solid #cbd5e1;
-  padding: 10px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 12px;
-  cursor: pointer;
-  margin-top: 8px;
-}
-
-/* Notifications */
-.ls-notif-list {
-  list-style: none;
-  padding: 0;
-  margin: 10px 0 0 0;
-  font-size: 12px;
-}
-
-.ls-notif-list li {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; }
-.dot.red { background: #ef4444; }
-.dot.yellow { background: #f59e0b; }
 
 @media (max-width: 900px) {
   .ls-layout > .phar-sidebar {
@@ -429,21 +374,12 @@
     font-size: 12px;
   }
 
-  .ls-status-pill {
-    display: inline-block;
-    padding: 3px 4px;
-    font-size: 11px;
-    font-weight: 600;
-  }
-
   .ls-right-panel {
     gap: 8px;
     min-width: 0;
   }
 
-  .ls-alert-card,
-  .ls-quick-actions-card,
-  .ls-notifications-card {
+  .ls-alert-card {
     padding: 9px 8px;
     border-radius: 8px;
   }
@@ -453,9 +389,7 @@
     margin-bottom: 7px;
   }
 
-  .ls-alert-header h3,
-  .ls-quick-actions-card h3,
-  .ls-notifications-card h3 {
+  .ls-alert-header h3 {
     font-size: 14px;
     line-height: 1.4;
   }
@@ -473,23 +407,11 @@
   }
 
   .ls-alert-item p,
-  .ls-text-muted,
-  .ls-notif-list {
+  .ls-text-muted {
     font-size: 12px;
     line-height: 1.4;
   }
 
-  .ls-btn-green,
-  .ls-btn-outline {
-    padding: 7px 5px;
-    font-size: 12px;
-    line-height: 1.4;
-  }
-
-  .ls-notif-list li {
-    gap: 5px;
-    margin-bottom: 7px;
-  }
 }
 
 @media (max-width: 700px) {

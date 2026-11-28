@@ -1,4 +1,5 @@
 import {
+  compareInventoryItemCodes,
   getHighestInventoryItemNumber,
   isInventoryItemCode
 } from './inventoryCodes';
@@ -14,9 +15,16 @@ describe('inventory codes', () => {
     expect(getHighestInventoryItemNumber([
       { itemCode: 'MED-3' },
       { itemCode: 'MED-11' },
+      { itemCode: 'MED-4', packageItemCodes: { halfBottle: 'MED-14' } },
       { itemCode: 'MED-G4LDKK7Z5UEBOFHQ6RKK' },
       { itemCode: 'ING-99' }
-    ], 'MED')).toBe(11);
+    ], 'MED')).toBe(14);
     expect(getHighestInventoryItemNumber([], 'ING')).toBe(0);
+  });
+
+  test('sorts numeric medicine codes in ascending order and leaves unknown codes last', () => {
+    expect(['MED-10', 'MED-2', '...', 'MED-1'].sort(
+      (left, right) => compareInventoryItemCodes(left, right, 'MED')
+    )).toEqual(['MED-1', 'MED-2', 'MED-10', '...']);
   });
 });

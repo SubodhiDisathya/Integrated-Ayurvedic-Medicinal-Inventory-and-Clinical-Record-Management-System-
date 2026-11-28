@@ -1,4 +1,4 @@
-import { collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { doc, runTransaction, serverTimestamp } from 'firebase/firestore';
 
 const kolasalesmaIngredients = [
   { name: 'තල තෙල්', quantity: 300, unit: 'ml' },
@@ -201,57 +201,143 @@ export const getRecipeIngredientsForRequest = (recipes = [], request = {}) => {
   }));
 };
 
+const getIngredientUnit = (unit) => {
+  const normalized = String(unit || '').trim().toLocaleLowerCase();
+  const units = {
+    g: { dimension: 'mass', factor: 1 },
+    gram: { dimension: 'mass', factor: 1 },
+    grams: { dimension: 'mass', factor: 1 },
+    'ග්‍රෑම්': { dimension: 'mass', factor: 1 },
+    kg: { dimension: 'mass', factor: 1000 },
+    kilogram: { dimension: 'mass', factor: 1000 },
+    kilograms: { dimension: 'mass', factor: 1000 },
+    'කිලෝ': { dimension: 'mass', factor: 1000 },
+    ml: { dimension: 'volume', factor: 1 },
+    milliliter: { dimension: 'volume', factor: 1 },
+    milliliters: { dimension: 'volume', factor: 1 },
+    'මිලිලීටර්': { dimension: 'volume', factor: 1 },
+    l: { dimension: 'volume', factor: 1000 },
+    liter: { dimension: 'volume', factor: 1000 },
+    liters: { dimension: 'volume', factor: 1000 },
+    'ලීටර්': { dimension: 'volume', factor: 1000 }
+  };
+  return units[normalized] || { dimension: normalized, factor: 1 };
+};
+
+export const getIngredientProductionEstimates = (
+  recipes = [],
+  ingredientName,
+  requestedQuantity,
+  requestedUnit
+) => {
+  const normalizedName = String(ingredientName || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  const quantity = Number(requestedQuantity);
+  const requestUnit = getIngredientUnit(requestedUnit);
+  if (!normalizedName || !Number.isFinite(quantity) || quantity <= 0 || !requestUnit.dimension) {
+    return [];
+  }
+
+  return recipes.flatMap((recipe) => {
+    const requiredQuantity = (recipe.ingredients || []).reduce((total, ingredient) => {
+      const ingredientNameKey = String(ingredient.name || '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLocaleLowerCase();
+      const recipeUnit = getIngredientUnit(ingredient.unit);
+      if (ingredientNameKey !== normalizedName || recipeUnit.dimension !== requestUnit.dimension) {
+        return total;
+      }
+
+      const ingredientQuantity = Number(ingredient.quantity);
+      return Number.isFinite(ingredientQuantity) && ingredientQuantity > 0
+        ? total + ingredientQuantity * recipeUnit.factor / requestUnit.factor
+        : total;
+    }, 0);
+
+    if (requiredQuantity <= 0) return [];
+
+    return [{
+      recipeId: recipe.id,
+      medicineCode: recipe.medicineCode || '',
+      medicineName: recipe.medicineName || '',
+      packageType: recipe.packageType || '',
+      ingredientQuantityPerUnit: requiredQuantity,
+      ingredientUnit: requestedUnit,
+      possibleQuantity: Math.floor(quantity / requiredQuantity + Number.EPSILON)
+    }];
+  });
+};
+
+export const calculateRecipeProductionEstimate = (recipe, availableIngredients = []) => {
+  const recipeIngredients = recipe?.ingredients || [];
+  if (recipeIngredients.length === 0) return null;
+
+  const getNameKey = (name) =>
+    String(name || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  const ingredientYields = recipeIngredients.map((ingredient) => {
+    const requiredQuantity = Number(ingredient.quantity);
+    const recipeUnit = getIngredientUnit(ingredient.unit);
+    const availableQuantity = availableIngredients.reduce((total, available) => {
+      if (getNameKey(available.name) !== getNameKey(ingredient.name)) return total;
+
+      const availableUnit = getIngredientUnit(available.unit);
+      if (availableUnit.dimension !== recipeUnit.dimension) return total;
+
+      const quantity = Number(available.quantity);
+      return Number.isFinite(quantity) && quantity > 0
+        ? total + quantity * availableUnit.factor / recipeUnit.factor
+        : total;
+    }, 0);
+
+    return {
+      name: ingredient.name,
+      unit: ingredient.unit,
+      requiredQuantity,
+      availableQuantity,
+      possibleQuantity: Number.isFinite(requiredQuantity) && requiredQuantity > 0
+        ? availableQuantity / requiredQuantity
+        : 0
+    };
+  });
+  const limitingIngredient = ingredientYields.reduce((limiting, current) =>
+    current.possibleQuantity < limiting.possibleQuantity ? current : limiting
+  );
+
+  return {
+    possibleQuantity: Math.floor(limitingIngredient.possibleQuantity + Number.EPSILON),
+    limitingIngredient: limitingIngredient.name,
+    ingredientYields
+  };
+};
+
 export const ensureDefaultMedicineRecipes = async (db) => {
   const markerRef = doc(db, 'system_metadata', 'medicine_recipes_seeded');
-  const rowNumberMigrationRef = doc(db, 'system_metadata', 'medicine_recipe_row_numbers_removed');
   const curatedRecipesMarkerRef = doc(db, 'system_metadata', 'medicine_recipes_curated_list_updated');
   await runTransaction(db, async (transaction) => {
-    const [markerSnapshot, migrationSnapshot, curatedRecipesMarkerSnapshot] = await Promise.all([
+    const [markerSnapshot, curatedRecipesMarkerSnapshot] = await Promise.all([
       transaction.get(markerRef),
-      transaction.get(rowNumberMigrationRef),
       transaction.get(curatedRecipesMarkerRef)
     ]);
-    if (
-      markerSnapshot.exists() &&
-      migrationSnapshot.exists() &&
-      curatedRecipesMarkerSnapshot.exists()
-    ) return;
+    if (markerSnapshot.exists() && curatedRecipesMarkerSnapshot.exists()) return;
 
-    const recipesSnapshot = await transaction.get(collection(db, 'medicine_recipes'));
-    const existingRecipesById = new Map(recipesSnapshot.docs.map((recipeDoc) => [
-      recipeDoc.id,
-      recipeDoc.data()
-    ]));
-    const curatedRecipeIds = new Set(DEFAULT_MEDICINE_RECIPES.map((recipe) => recipe.id));
-    DEFAULT_MEDICINE_RECIPES.forEach((defaultRecipe) => {
-      const existingRecipe = existingRecipesById.get(defaultRecipe.id);
-      if (existingRecipe && curatedRecipesMarkerSnapshot.exists()) return;
+    const recipeRefs = DEFAULT_MEDICINE_RECIPES.map((recipe) =>
+      doc(db, 'medicine_recipes', recipe.id)
+    );
+    const recipeSnapshots = await Promise.all(recipeRefs.map((recipeRef) =>
+      transaction.get(recipeRef)
+    ));
 
+    recipeSnapshots.forEach((recipeSnapshot, index) => {
+      if (recipeSnapshot.exists() && curatedRecipesMarkerSnapshot.exists()) return;
+
+      const defaultRecipe = DEFAULT_MEDICINE_RECIPES[index];
       const { id, ...recipe } = defaultRecipe;
       transaction.set(doc(db, 'medicine_recipes', id), {
         ...recipe,
-        createdAt: existingRecipe?.createdAt || serverTimestamp(),
+        createdAt: recipeSnapshot.data()?.createdAt || serverTimestamp(),
         updatedAt: serverTimestamp()
       }, { merge: true });
     });
-
-    if (!migrationSnapshot.exists()) {
-      recipesSnapshot.docs.forEach((recipeDoc) => {
-        if (!curatedRecipesMarkerSnapshot.exists() && curatedRecipeIds.has(recipeDoc.id)) return;
-        const ingredients = recipeDoc.data().ingredients;
-        if (!Array.isArray(ingredients) || !ingredients.some((ingredient) =>
-          Object.prototype.hasOwnProperty.call(ingredient, 'ingredientNumber')
-        )) return;
-
-        transaction.update(recipeDoc.ref, {
-          ingredients: ingredients.map(({ ingredientNumber, ...ingredient }) => ingredient)
-        });
-      });
-      transaction.set(rowNumberMigrationRef, {
-        completed: true,
-        completedAt: serverTimestamp()
-      });
-    }
 
     if (!markerSnapshot.exists()) {
       transaction.set(markerRef, {

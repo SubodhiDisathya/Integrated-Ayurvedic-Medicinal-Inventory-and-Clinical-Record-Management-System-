@@ -100,6 +100,9 @@ export const getInventoryStockRows = (item = {}) => {
   }];
 };
 
+export const getInventoryItemCodeForStockRow = (item = {}, stockRow = {}) =>
+  (stockRow.packageUnit && item.packageItemCodes?.[stockRow.packageUnit]) || item.itemCode;
+
 export const getLowStockRows = (item = {}) =>
   getInventoryStockRows(item).filter((row) =>
     isLowStock({ quantity: row.quantity, minLevel: getInventoryThreshold(item) })

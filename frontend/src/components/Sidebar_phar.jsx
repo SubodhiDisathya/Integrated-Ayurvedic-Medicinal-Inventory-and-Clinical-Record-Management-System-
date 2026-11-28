@@ -41,7 +41,7 @@ export default function Sidebar_phar() {
     },
     { 
       path: '/pharmacy/low-stock', 
-      label: 'අඩු තොග අනතුරු ඇඟවීම්', 
+      label: 'අවම තොග දැනුම්දීම',
       icon: 'bi-exclamation-triangle-fill' 
     },
     { 

@@ -1,9 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
+import { compareInventoryItemCodes } from '../../utils/inventoryCodes';
+import {
+  getInventoryItemCodeForStockRow,
+  getInventoryStockRows
+} from '../../utils/inventoryStock';
+import {
+  getExpiryDateForInventoryCode,
+  getInventoryExpiryDateForStockRow
+} from '../../utils/inventoryExpiry';
 import SidebarAdmin from '../../components/SidebarAdmin';
 import RoleTopbar from '../../components/RoleTopbar';
 import {
+  DEFAULT_MEDICINE_RECIPES,
   ensureDefaultMedicineRecipes,
   parseRecipeIngredients
 } from '../../utils/medicineRecipes';
@@ -27,8 +37,11 @@ const formatIngredientsForTable = (ingredients = []) => ingredients
   .map(({ name, quantity, unit }) => `${name} ${quantity}${unit}`)
   .join(', ');
 
+const defaultRecipeList = DEFAULT_MEDICINE_RECIPES.map((recipe) => ({ ...recipe }));
+
 export default function AdminMedicineRecipes() {
-  const [recipes, setRecipes] = useState([]);
+  const [recipes, setRecipes] = useState(defaultRecipeList);
+  const [inventoryItems, setInventoryItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingRecipeId, setEditingRecipeId] = useState('');
@@ -38,43 +51,82 @@ export default function AdminMedicineRecipes() {
 
   useEffect(() => {
     let active = true;
-    let unsubscribeRecipes;
-
-    const loadRecipes = async () => {
-      try {
-        await ensureDefaultMedicineRecipes(db);
-        if (!active) return;
-
-        unsubscribeRecipes = onSnapshot(
-          collection(db, 'medicine_recipes'),
-          (snapshot) => {
-            const recipeList = snapshot.docs
-              .map((recipeDoc) => ({ id: recipeDoc.id, ...recipeDoc.data() }))
-              .sort((a, b) => (a.displayOrder ?? Number.MAX_SAFE_INTEGER) - (b.displayOrder ?? Number.MAX_SAFE_INTEGER));
-            setRecipes(recipeList);
-            setLoading(false);
-          },
-          (snapshotError) => {
-            console.error('Error loading medicine recipes:', snapshotError);
-            setError('ඖෂධ වට්ටෝරු ලබාගැනීමට නොහැකි විය.');
-            setLoading(false);
-          }
-        );
-      } catch (loadError) {
-        console.error('Error initializing medicine recipes:', loadError);
-        if (active) {
-          setError('ඖෂධ වට්ටෝරු සකස් කිරීමට නොහැකි විය.');
-          setLoading(false);
-        }
+    const unsubscribeRecipes = onSnapshot(
+      collection(db, 'medicine_recipes'),
+      (snapshot) => {
+        const recipeList = snapshot.docs
+          .map((recipeDoc) => ({ id: recipeDoc.id, ...recipeDoc.data() }))
+          .sort((a, b) => (a.displayOrder ?? Number.MAX_SAFE_INTEGER) - (b.displayOrder ?? Number.MAX_SAFE_INTEGER));
+        setRecipes(recipeList.length === 0 && snapshot.metadata.fromCache
+          ? defaultRecipeList
+          : recipeList);
+        setLoading(false);
+      },
+      (snapshotError) => {
+        console.error('Error loading medicine recipes:', snapshotError);
+        setError('ඖෂධ වට්ටෝරු ලබාගැනීමට නොහැකි විය.');
+        setLoading(false);
       }
-    };
+    );
+    const unsubscribeInventory = onSnapshot(
+      collection(db, 'inventory'),
+      (snapshot) => {
+        setInventoryItems(snapshot.docs.map((inventoryDoc) => ({
+          id: inventoryDoc.id,
+          ...inventoryDoc.data()
+        })));
+      },
+      (inventoryError) => console.error('Error loading recipe inventory details:', inventoryError)
+    );
 
-    loadRecipes();
+    ensureDefaultMedicineRecipes(db).catch((loadError) => {
+      console.error('Error initializing medicine recipes:', loadError);
+      if (active) {
+        setError('ඖෂධ වට්ටෝරු සකස් කිරීමට නොහැකි විය.');
+        setLoading(false);
+      }
+    });
+
     return () => {
       active = false;
-      unsubscribeRecipes?.();
+      unsubscribeRecipes();
+      unsubscribeInventory();
     };
   }, []);
+
+  const getRecipeDisplayDetails = (recipe) => {
+    const inventoryItem = inventoryItems.find((item) =>
+      item.itemCode === recipe.medicineCode
+    ) || inventoryItems.find((item) =>
+      item.name?.trim() === recipe.medicineName?.trim()
+    );
+
+    if (!inventoryItem) {
+      return {
+        medicineCode: recipe.medicineCode,
+        expiryDate: getExpiryDateForInventoryCode(recipe.medicineCode) || '—'
+      };
+    }
+
+    const stockRows = getInventoryStockRows(inventoryItem);
+    const stockRow = stockRows.find((row) =>
+      (row.packageUnit || null) === (recipe.stockPackageUnit || null)
+    ) || stockRows[0];
+    const medicineCode = getInventoryItemCodeForStockRow(inventoryItem, stockRow) || recipe.medicineCode;
+    const inventoryExpiryDate = getInventoryExpiryDateForStockRow(inventoryItem, stockRow);
+
+    return {
+      medicineCode,
+      expiryDate: inventoryExpiryDate !== '—'
+        ? inventoryExpiryDate
+        : getExpiryDateForInventoryCode(medicineCode) || '—'
+    };
+  };
+  const recipesWithInventoryDetails = recipes
+    .map((recipe) => ({ ...recipe, ...getRecipeDisplayDetails(recipe) }))
+    .sort((left, right) =>
+      compareInventoryItemCodes(left.medicineCode, right.medicineCode, 'MED')
+    );
 
   const resetForm = () => {
     setEditingRecipeId('');
@@ -126,7 +178,7 @@ export default function AdminMedicineRecipes() {
 
     const duplicateRecipe = recipes.find((recipe) =>
       recipe.id !== editingRecipeId &&
-      recipe.medicineCode === medicineCode &&
+      getRecipeDisplayDetails(recipe).medicineCode === medicineCode &&
       (recipe.stockPackageUnit || null) === stockPackageUnit
     );
     if (duplicateRecipe) {
@@ -150,7 +202,10 @@ export default function AdminMedicineRecipes() {
       };
 
       if (editingRecipeId) {
-        await updateDoc(doc(db, 'medicine_recipes', editingRecipeId), recipeData);
+        await setDoc(doc(db, 'medicine_recipes', editingRecipeId), {
+          ...recipeData,
+          ...(!existingRecipe?.createdAt ? { createdAt: serverTimestamp() } : {})
+        }, { merge: true });
         setMessage('වට්ටෝරුව යාවත්කාලීන කරන ලදී.');
       } else {
         await addDoc(collection(db, 'medicine_recipes'), {
@@ -281,7 +336,7 @@ export default function AdminMedicineRecipes() {
                 <h2>වට්ටෝරු ලැයිස්තුව</h2>
                 <span>{recipes.length} වට්ටෝරු</span>
               </div>
-              {loading ? (
+              {loading && recipes.length === 0 ? (
                 <p className="admin-recipe-empty">වට්ටෝරු පූරණය වෙමින් පවතී...</p>
               ) : recipes.length === 0 ? (
                 <p className="admin-recipe-empty">වට්ටෝරු නොමැත.</p>
@@ -292,6 +347,7 @@ export default function AdminMedicineRecipes() {
                       <tr>
                         <th>අංකය</th>
                         <th>ඖෂධය</th>
+                        <th>කල් ඉකුත් වන දිනය</th>
                         <th>පැකේජ් වර්ගය</th>
                         <th>නිෂ්පාදන ප්‍රමාණය</th>
                         <th>අමුද්‍රව්‍ය සහ ප්‍රමාණ</th>
@@ -299,10 +355,11 @@ export default function AdminMedicineRecipes() {
                       </tr>
                     </thead>
                     <tbody>
-                      {recipes.map((recipe) => (
+                      {recipesWithInventoryDetails.map((recipe) => (
                         <tr key={recipe.id}>
                           <td>{recipe.medicineCode}</td>
                           <td>{recipe.medicineName}</td>
+                          <td>{recipe.expiryDate}</td>
                           <td>{recipe.packageType}</td>
                           <td>{recipe.outputQuantity}</td>
                           <td className="admin-recipe-ingredients-cell">{formatIngredientsForTable(recipe.ingredients)}</td>

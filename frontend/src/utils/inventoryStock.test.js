@@ -4,6 +4,7 @@ import {
   getInventoryStockRows,
   getLowStockRows,
   getInventoryIngredients,
+  getInventoryItemCodeForStockRow,
   getInventoryItemCode,
   getInventoryQuantity,
   getInventoryThreshold,
@@ -48,6 +49,26 @@ describe('inventory stock helpers', () => {
       bottleStock: { bottle: 5, halfBottle: 30, quarterBottle: 3 },
       minLevel: 10
     }).map((row) => row.packageUnit)).toEqual(['bottle', 'quarterBottle']);
+  });
+
+  test('uses a distinct saved inventory code for each bottle package row', () => {
+    const item = {
+      itemCode: 'MED-6',
+      packageItemCodes: {
+        bottle: 'MED-6',
+        halfBottle: 'MED-7',
+        quarterBottle: 'MED-8'
+      }
+    };
+    const rows = getInventoryStockRows({
+      bottleStock: { bottle: 19, halfBottle: 30, quarterBottle: 40 }
+    });
+
+    expect(rows.map((row) => getInventoryItemCodeForStockRow(item, row))).toEqual([
+      'MED-6',
+      'MED-7',
+      'MED-8'
+    ]);
   });
 
   test('deducts issued quantities from matching bottle-size stock only', () => {

@@ -1,11 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { db } from '../../firebase/firebase';
-import { collection, onSnapshot, updateDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ensureInventoryItemCode, getHighestInventoryItemNumber, isInventoryItemCode } from '../../utils/inventoryCodes';
+import { collection, onSnapshot, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  compareInventoryItemCodes,
+  ensureInventoryItemCode,
+  ensureInventoryPackageItemCodes,
+  getHighestInventoryItemNumber,
+  isInventoryItemCode
+} from '../../utils/inventoryCodes';
 import {
   DEFAULT_INVENTORY_THRESHOLD,
   getInventoryIngredients,
+  getInventoryItemCodeForStockRow,
   getInventoryQuantity,
   getInventoryThreshold,
   getInventoryStockRows,
@@ -13,7 +19,12 @@ import {
   getLowStockRows,
   isLowStock
 } from '../../utils/inventoryStock';
-import { BOTTLE_STOCK_UNITS, isBottleMedicine } from '../../utils/medicineQuantity';
+import {
+  getInventoryExpiryDateForStockRow,
+  getInventoryExpiryUpdates
+} from '../../utils/inventoryExpiry';
+import { BOTTLE_STOCK_UNITS } from '../../utils/medicineQuantity';
+import { getRecipeIngredientsForRequest } from '../../utils/medicineRecipes';
 import SidebarPhar from '../../components/Sidebar_phar';
 import './LowStockInventory.css';
 
@@ -35,24 +46,12 @@ const isExpiringSoon = (item, days = 30) => {
 };
 
 export default function LowStockInventory() {
-  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [inventory, setInventory] = useState([]);
-  const [notifications, setNotifications] = useState([]);
+  const [medicineRecipes, setMedicineRecipes] = useState([]);
   const [notificationMessage, setNotificationMessage] = useState('');
-  const [notificationPermission, setNotificationPermission] = useState(
-    typeof window !== 'undefined' && 'Notification' in window ? window.Notification.permission : 'unsupported'
-  );
   const previousLowStock = useRef(null);
 
-  // Modal State සඳහා
-  const [showModal, setShowModal] = useState(false);
-  const [currentId, setCurrentId] = useState(null);
-  const [editName, setEditName] = useState('');
-  const [editStock, setEditStock] = useState('');
-  const [editUnit, setEditUnit] = useState('');
-  const [editIngredients, setEditIngredients] = useState('');
-  const [editBottleStock, setEditBottleStock] = useState({});
   const [requestingStockKey, setRequestingStockKey] = useState('');
   const [supplyRequests, setSupplyRequests] = useState([]);
 
@@ -129,10 +128,41 @@ export default function LowStockInventory() {
           expiryDate: customDetails.expiryDate
         };
 
-        if (!isInventoryItemCode('MED', data.itemCode)) {
-          ensureInventoryItemCode(db, docSnap.ref, 'MED', minimumMedicineNumber).catch((error) => {
-            console.error('Error assigning medicine inventory code:', error);
+        if (data.bottleStock) {
+          ensureInventoryPackageItemCodes(
+            db,
+            docSnap.ref,
+            'MED',
+            minimumMedicineNumber,
+            BOTTLE_STOCK_UNITS.map(({ key }) => key)
+          ).then(({ itemCode, packageItemCodes }) => {
+            const expiryUpdates = getInventoryExpiryUpdates({
+              ...data,
+              itemCode,
+              packageItemCodes
+            });
+            if (Object.keys(expiryUpdates).length > 0) {
+              return updateDoc(docSnap.ref, expiryUpdates);
+            }
+          }).catch((error) => {
+            console.error('Error assigning medicine package codes:', error);
           });
+        } else if (!isInventoryItemCode('MED', data.itemCode)) {
+          ensureInventoryItemCode(db, docSnap.ref, 'MED', minimumMedicineNumber)
+            .then((itemCode) => {
+              const expiryUpdates = getInventoryExpiryUpdates({ ...data, itemCode });
+              if (Object.keys(expiryUpdates).length > 0) {
+                return updateDoc(docSnap.ref, expiryUpdates);
+              }
+            })
+            .catch((error) => console.error('Error assigning medicine inventory code:', error));
+        } else {
+          const expiryUpdates = getInventoryExpiryUpdates(data);
+          if (Object.keys(expiryUpdates).length > 0) {
+            updateDoc(docSnap.ref, expiryUpdates).catch((error) => {
+              console.error('Error saving medicine expiry dates:', error);
+            });
+          }
         }
         list.push(item);
       });
@@ -143,14 +173,6 @@ export default function LowStockInventory() {
         ).map((row) => ({ ...item, alertStock: row.quantity, alertUnit: row.unit }))
       );
       if (newlyLowItems.length > 0) {
-        setNotifications((current) => [
-          ...newlyLowItems.map((item) => ({
-            id: `${item.id}-${Date.now()}`,
-            message: `${item.name} (${item.alertUnit}): තොගය ${item.alertStock} දක්වා අඩු වී ඇත.`
-          })),
-          ...current
-        ].slice(0, 5));
-
         const message = newlyLowItems.map((item) => item.name).join(', ');
         setNotificationMessage(`${message} සඳහා අඩු තොග අනතුරු ඇඟවීමක් ඇත.`);
 
@@ -192,70 +214,20 @@ export default function LowStockInventory() {
     return () => unsubscribe();
   }, []);
 
-  const handleEnableNotifications = async () => {
-    if (!('Notification' in window)) {
-      setNotificationPermission('unsupported');
-      return;
-    }
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'medicine_recipes'),
+      (snapshot) => {
+        setMedicineRecipes(snapshot.docs.map((recipeDoc) => ({
+          id: recipeDoc.id,
+          ...recipeDoc.data()
+        })));
+      },
+      (error) => console.error('Error fetching medicine recipes:', error)
+    );
 
-    const permission = await window.Notification.requestPermission();
-    setNotificationPermission(permission);
-  };
-
-  // Edit Modal එක විවෘත කිරීම
-  const handleOpenEditModal = (item) => {
-    setCurrentId(item.id);
-    setEditName(item.name || '');
-    setEditStock(item.bottleStock ? '' : (item.currentStock ?? ''));
-    setEditUnit(item.unit || '');
-    setEditIngredients(item.ingredients);
-    setEditBottleStock(item.bottleStock ? { ...item.bottleStock } : {});
-    setShowModal(true);
-  };
-
-  // යාවත්කාලීන කිරීම සුරැකීම (Update Handler) - Vuguruwe neza ngo ikore
-  const handleUpdateSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (currentId && typeof currentId === 'string' && currentId.length > 5) {
-        const medRef = doc(db, 'inventory', currentId);
-        const newStockVal = Number(editStock);
-        if (isBottleMedicine(editName) && Object.keys(editBottleStock).length > 0) {
-          const parsedBottleStock = {};
-          for (const { key } of BOTTLE_STOCK_UNITS) {
-            const parsedValue = Number(editBottleStock[key]);
-            if (!Number.isFinite(parsedValue) || parsedValue < 0) {
-              alert('සියලුම බෝතල් වර්ග සඳහා වලංගු තොග ප්‍රමාණයක් ඇතුළත් කරන්න.');
-              return;
-            }
-            parsedBottleStock[key] = parsedValue;
-          }
-          await updateDoc(medRef, {
-            quantity: parsedBottleStock.bottle,
-            currentStock: parsedBottleStock.bottle,
-            stock: parsedBottleStock.bottle,
-            unit: 'බෝතල්',
-            bottleStock: parsedBottleStock,
-            ingredients: editIngredients.trim()
-          });
-        } else {
-          await updateDoc(medRef, {
-            quantity: newStockVal,
-            currentStock: newStockVal,
-            stock: newStockVal,
-            unit: editUnit,
-            ingredients: editIngredients.trim()
-          });
-        }
-      }
-
-      alert('ඖෂධ තොරතුරු සාර්ථකව යාවත්කාලීන කරන ලදී!');
-      setShowModal(false);
-    } catch (error) {
-      console.error("Error updating stock: ", error);
-      alert('යාවත්කාලීන කිරීමේදී දෝෂයක් ඇති විය.');
-    }
-  };
+    return () => unsubscribe();
+  }, []);
 
   const handleCreateSupplyRequest = async (item) => {
     const stockKey = `${item.id}-${item.stockRowKey || item.unit}`;
@@ -285,28 +257,51 @@ export default function LowStockInventory() {
   };
 
   const displayInventory = inventory;
+  const getRecipeIngredientsForStockRow = (item, stockRow) => {
+    const ingredients = getRecipeIngredientsForRequest(medicineRecipes, {
+      itemCode: getInventoryItemCodeForStockRow(item, stockRow),
+      itemName: item.name,
+      packageUnit: stockRow.packageUnit
+    });
+
+    return ingredients.length > 0
+      ? ingredients.map((ingredient) =>
+        `${ingredient.name} ${ingredient.quantity}${ingredient.unit || ''}`
+      ).join(', ')
+      : item.ingredients;
+  };
   const lowStockAlerts = displayInventory.flatMap((item) =>
     getLowStockRows(item).map((row) => ({
       ...item,
       stockRowKey: row.key,
+      itemCode: getInventoryItemCodeForStockRow(item, row),
+      displayIngredients: getRecipeIngredientsForStockRow(item, row),
       quantity: row.quantity,
       currentStock: row.quantity,
-      unit: row.unit
+      unit: row.unit,
+      expiryDate: getInventoryExpiryDateForStockRow(item, row)
     }))
+  ).sort((left, right) =>
+    compareInventoryItemCodes(left.itemCode, right.itemCode, 'MED')
   );
 
   const filteredInventory = displayInventory.flatMap((item) =>
     getInventoryStockRows(item).map((row) => ({
       ...item,
       stockRowKey: row.key,
+      itemCode: getInventoryItemCodeForStockRow(item, row),
+      displayIngredients: getRecipeIngredientsForStockRow(item, row),
       quantity: row.quantity,
       currentStock: row.quantity,
-      unit: row.unit
+      unit: row.unit,
+      expiryDate: getInventoryExpiryDateForStockRow(item, row)
     }))
   ).filter(item =>
     (item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (item.ingredients && item.ingredients.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (item.displayIngredients && item.displayIngredients.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (item.unit && item.unit.toLowerCase().includes(searchTerm.toLowerCase()))
+  ).sort((left, right) =>
+    compareInventoryItemCodes(left.itemCode, right.itemCode, 'MED')
   );
 
   return (
@@ -331,7 +326,7 @@ export default function LowStockInventory() {
             <button
               type="button"
               className="ls-nav-bell"
-              aria-label="අඩු තොග අනතුරු ඇඟවීම්"
+              aria-label="අවම තොග දැනුම්දීම"
               onClick={() => document.getElementById('low-stock-alerts')?.scrollIntoView({ behavior: 'smooth' })}
               style={{ border: 0, background: 'transparent' }}
             >
@@ -407,8 +402,6 @@ export default function LowStockInventory() {
                     <th>අමුද්‍රව්‍ය</th>
                     <th>වත්මන් තොගය</th>
                     <th>කල් ඉකුත් වන දිනය</th>
-                    <th>තත්ත්වය</th>
-                    <th>ක්‍රියා</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -420,7 +413,7 @@ export default function LowStockInventory() {
                         <td>
                           <strong>{med.name}</strong>
                         </td>
-                        <td className="ls-ingredients-td">{med.ingredients || 'අමුද්‍රව්‍ය සඳහන් කර නැත'}</td>
+                        <td className="ls-ingredients-td">{med.displayIngredients || 'අමුද්‍රව්‍ය සඳහන් කර නැත'}</td>
                         <td>
                           <strong>{med.currentStock}</strong> ({med.unit})
                           {isLow && (
@@ -428,23 +421,6 @@ export default function LowStockInventory() {
                           )}
                         </td>
                         <td>{med.expiryDate}</td>
-                        <td>
-                          <span className={`ls-status-pill ${isLow ? 'low' : 'ok'}`}>
-                            {isLow ? 'අඩු තොගය' : 'තොගයේ ඇත'}
-                          </span>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <button 
-                              className="ls-btn-action" 
-                              onClick={() => handleOpenEditModal(med)}
-                              title="යාවත්කාලීන කරන්න"
-                              style={{ background: '#e6f4ea', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', color: '#137333', fontSize: '12px', fontWeight: 'bold' }}
-                            >
-                              යාවත්කාලීන
-                            </button>
-                          </div>
-                        </td>
                       </tr>
                     );
                   })}
@@ -455,10 +431,10 @@ export default function LowStockInventory() {
 
           {/* දකුණුපස අනතුරු ඇඟවීම් සහ විකල්ප පුවරුව */}
           <div className="ls-right-panel">
-            {/* අඩු තොග අනතුරු ඇඟවීම් පෙට්ටිය */}
+            {/* අවම තොග දැනුම්දීම පෙට්ටිය */}
             <div className="ls-alert-card" id="low-stock-alerts">
               <div className="ls-alert-header">
-                <h3><i className="bi bi-bell-fill text-danger"></i> අඩු තොග අනතුරු ඇඟවීම්</h3>
+                <h3><i className="bi bi-bell-fill text-danger"></i> අවම තොග දැනුම්දීම</h3>
                 <span className="ls-alert-badge">{lowStockAlerts.length}</span>
               </div>
 
@@ -498,149 +474,15 @@ export default function LowStockInventory() {
                     </div>
                   ))
                 ) : (
-                  <p className="ls-text-muted">අඩු තොග අනතුරු ඇඟවීම් නොමැත.</p>
+                  <p className="ls-text-muted">අවම තොග දැනුම්දීම් නොමැත.</p>
                 )}
               </div>
             </div>
 
-            {/* ඉක්මන් ක්‍රියාකාරකම් පෙට්ටිය */}
-            <div className="ls-quick-actions-card">
-              <h3><i className="bi bi-plus-circle-fill"></i> ඉක්මන් ක්‍රියා</h3>
-              <button className="ls-btn-green" onClick={() => navigate('/pharmacy/inventory')}>
-                <i className="bi bi-plus-lg"></i> නව ඖෂධයක් එක් කරන්න
-              </button>
-              <button className="ls-btn-outline" onClick={() => navigate('/pharmacy/inventory?tab=ingredients')}>
-                <i className="bi bi-list-nested"></i> අමුද්‍රව්‍ය ලැයිස්තුව බලන්න
-              </button>
-              <button className="ls-btn-outline">
-                <i className="bi bi-file-earmark-pdf"></i> අඩු තොග වාර්තාවක් සාදන්න
-              </button>
-            </div>
-
-            {/* මෑත කාලීන දැනුම්දීම් */}
-            <div className="ls-notifications-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ margin: 0 }}>මෑත කාලීන දැනුම්දීම්</h3>
-                {notificationPermission === 'default' && (
-                  <button type="button" onClick={handleEnableNotifications} style={{ border: 0, background: 'transparent', color: '#137333', cursor: 'pointer', fontSize: '11px' }}>
-                    දැනුම්දීම් සක්‍රිය කරන්න
-                  </button>
-                )}
-              </div>
-              <ul className="ls-notif-list">
-                {notifications.length > 0 ? notifications.map((notification) => (
-                  <li key={notification.id}>
-                    <span className="dot red"></span>
-                    <div><p>{notification.message}</p><small>දැන්</small></div>
-                  </li>
-                )) : (
-                  <li><span className="dot yellow"></span><div><p>නව අඩු තොග දැනුම්දීම් නොමැත.</p></div></li>
-                )}
-              </ul>
-            </div>
           </div> 
         </div>
       </div>
 
-      {/* Edit Modal Popup Box */}
-      {showModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#fff', padding: '30px', borderRadius: '16px', width: '400px', maxWidth: '90%', boxShadow: '0 15px 30px rgba(0,0,0,0.15)' }}>
-            <h3 style={{ margin: '0 0 20px 0', color: '#1a5a38', fontSize: '18px', fontWeight: 'bold' }}>
-              ඖෂධ තොගය යාවත්කාලීන කරන්න
-            </h3>
-            
-            <form onSubmit={handleUpdateSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>ඖෂධයේ නම</label>
-                <input 
-                  type="text" 
-                  value={editName} 
-                  disabled 
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', background: '#f7f6f2', color: '#666' }} 
-                />
-              </div>
-
-              {isBottleMedicine(editName) ? (
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '8px' }}>බෝතල් වර්ගය අනුව තොගය</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    {BOTTLE_STOCK_UNITS.map(({ key, label }) => (
-                      <div key={key}>
-                        <label style={{ fontSize: '12px', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>{label}</label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={editBottleStock[key] ?? ''}
-                          onChange={(e) => setEditBottleStock((previous) => ({
-                            ...previous,
-                            [key]: e.target.value
-                          }))}
-                          required
-                          style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>වත්මන් තොග ප්‍රමාණය</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={editStock}
-                      onChange={(e) => setEditStock(e.target.value)}
-                      required
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>ඒකකය (Unit)</label>
-                    <input
-                      type="text"
-                      value={editUnit}
-                      onChange={(e) => setEditUnit(e.target.value)}
-                      required
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
-                    />
-                  </div>
-                </>
-              )}
-
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35', display: 'block', marginBottom: '5px' }}>අමුද්‍රව්‍ය (එක් පේළියකට එකක්)</label>
-                <textarea
-                  value={editIngredients}
-                  onChange={(e) => setEditIngredients(e.target.value)}
-                  rows={4}
-                  placeholder={'අරළු\nබුළු\nනෙල්ලි'}
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', resize: 'vertical' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setShowModal(false)} 
-                  style={{ flex: 1, background: '#f3ede2', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', color: '#5c4a42' }}
-                >
-                  අවලංගු කරන්න
-                </button>
-                <button 
-                  type="submit" 
-                  style={{ flex: 1, background: '#1a5a38', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  යාවත්කාලීන කරන්න
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

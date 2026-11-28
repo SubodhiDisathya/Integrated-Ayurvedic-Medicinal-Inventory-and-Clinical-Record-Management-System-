@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../../firebase/firebase';
-import { collection, onSnapshot, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import {
   BOTTLE_STOCK_UNITS,
   BOTTLE_STOCK_DEFAULTS,
@@ -10,10 +10,17 @@ import {
   isBottleMedicine,
   isBottleUnit
 } from '../../utils/medicineQuantity';
-import { ensureInventoryItemCode, getHighestInventoryItemNumber, isInventoryItemCode } from '../../utils/inventoryCodes';
+import {
+  compareInventoryItemCodes,
+  ensureInventoryItemCode,
+  ensureInventoryPackageItemCodes,
+  getHighestInventoryItemNumber,
+  isInventoryItemCode
+} from '../../utils/inventoryCodes';
 import {
   DEFAULT_INVENTORY_THRESHOLD,
   getInventoryIngredients,
+  getInventoryItemCodeForStockRow,
   getInventoryQuantity,
   getInventoryThreshold,
   isLowStock
@@ -94,6 +101,10 @@ export default function PharmacyInventory() {
   const [ingredientQuantity, setIngredientQuantity] = useState('');
   const [ingredientUnit, setIngredientUnit] = useState('');
   const [ingredientMinLevel, setIngredientMinLevel] = useState(String(DEFAULT_INVENTORY_THRESHOLD));
+  const [showIngredientSupplyRequestModal, setShowIngredientSupplyRequestModal] = useState(false);
+  const [ingredientSupplyRequestItem, setIngredientSupplyRequestItem] = useState(null);
+  const [ingredientSupplyRequestQuantity, setIngredientSupplyRequestQuantity] = useState('');
+  const [submittingIngredientSupplyRequest, setSubmittingIngredientSupplyRequest] = useState(false);
 
   useEffect(() => {
     // 1. Inventory Real-time Listener
@@ -172,7 +183,17 @@ export default function PharmacyInventory() {
             });
           }
 
-          if (!isInventoryItemCode('MED', data.itemCode)) {
+          if (bottleStock) {
+            ensureInventoryPackageItemCodes(
+              db,
+              docSnap.ref,
+              'MED',
+              minimumMedicineNumber,
+              BOTTLE_STOCK_UNITS.map(({ key }) => key)
+            ).catch((error) => {
+              console.error('Error assigning medicine package codes:', error);
+            });
+          } else if (!isInventoryItemCode('MED', data.itemCode)) {
             ensureInventoryItemCode(db, docSnap.ref, 'MED', minimumMedicineNumber).catch((error) => {
               console.error('Error assigning medicine inventory code:', error);
             });
@@ -367,6 +388,56 @@ export default function PharmacyInventory() {
     }
   };
 
+  const handleIngredientSupplyRequest = async (e) => {
+    e.preventDefault();
+    const requestedQuantity = Number(ingredientSupplyRequestQuantity);
+    if (
+      !ingredientSupplyRequestItem ||
+      !Number.isFinite(requestedQuantity) ||
+      requestedQuantity <= 0
+    ) {
+      alert('සැපයුම්කරුගෙන් ඉල්ලන නිවැරදි ප්‍රමාණයක් ඇතුළත් කරන්න.');
+      return;
+    }
+
+    setSubmittingIngredientSupplyRequest(true);
+    try {
+      const item = ingredientSupplyRequestItem;
+      const unit = item.unit || 'ඒකක';
+      await addDoc(collection(db, 'low_stock_requests'), {
+        requestType: 'ingredient',
+        ingredientId: item.id,
+        ingredientName: item.name,
+        itemName: item.name,
+        itemCode: item.itemCode,
+        ingredientNames: [item.name],
+        ingredients: [{ name: item.name, quantity: requestedQuantity, unit }],
+        quantity: requestedQuantity,
+        unit,
+        currentStock: getInventoryQuantity(item),
+        threshold: getInventoryThreshold(item),
+        status: 'pending_admin',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      setShowIngredientSupplyRequestModal(false);
+      setIngredientSupplyRequestItem(null);
+      alert('අමුද්‍රව්‍ය සැපයුම් ඉල්ලීම පරිපාලක වෙත යවන ලදී.');
+    } catch (error) {
+      console.error('Error creating ingredient supply request:', error);
+      alert('අමුද්‍රව්‍ය සැපයුම් ඉල්ලීම යැවීමේදී දෝෂයක් ඇති විය.');
+    } finally {
+      setSubmittingIngredientSupplyRequest(false);
+    }
+  };
+
+  const handleOpenIngredientSupplyRequest = (item) => {
+    const shortage = Math.max(0, getInventoryThreshold(item) - getInventoryQuantity(item));
+    setIngredientSupplyRequestItem(item);
+    setIngredientSupplyRequestQuantity(String(shortage));
+    setShowIngredientSupplyRequestModal(true);
+  };
+
   const handleOpenIngredientModal = (item = null) => {
     setEditingIngredientId(item?.id || null);
     setIngredientName(item?.name || '');
@@ -448,6 +519,12 @@ export default function PharmacyInventory() {
   );
   const inventoryRows = filteredInventory.flatMap((item) =>
     getInventoryDisplayRows(item).map((stockRow) => ({ item, stockRow }))
+  ).sort((left, right) =>
+    compareInventoryItemCodes(
+      getInventoryItemCodeForStockRow(left.item, left.stockRow),
+      getInventoryItemCodeForStockRow(right.item, right.stockRow),
+      'MED'
+    )
   );
   const lowStockItems = inventory.flatMap((item) =>
     getInventoryDisplayRows(item)
@@ -494,7 +571,7 @@ export default function PharmacyInventory() {
             aria-live="polite"
             style={{ margin: '12px 30px 0', padding: '14px 18px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '12px', color: '#9a3412' }}
           >
-            <strong>අඩු තොග අනතුරු ඇඟවීම ({lowStockItems.length})</strong>
+            <strong>අවම තොග දැනුම්දීම ({lowStockItems.length})</strong>
             <p style={{ margin: '6px 0 10px' }}>
               {lowStockItems.map((item) => `${item.name}: ${item.quantity} ${item.unit}`).join(' · ')}
             </p>
@@ -549,7 +626,7 @@ export default function PharmacyInventory() {
                     </tr>
                   </thead>
                   <tbody>
-                    {inventoryRows.map(({ item, stockRow }, index) => {
+                    {inventoryRows.map(({ item, stockRow }) => {
                         const todayUsage = todaysUsage[item.name?.trim()];
                         const todayUsed = stockRow.packageUnit
                           ? todayUsage?.byUnit?.[stockRow.packageUnit] || 0
@@ -558,7 +635,9 @@ export default function PharmacyInventory() {
 
                         return (
                         <tr key={`${item.id}-${stockRow.key}`} style={{ borderBottom: '1px solid #f2ede4', fontSize: '14px' }}>
-                          <td style={{ padding: '16px 12px', color: '#5c4a42', fontWeight: '600' }}>MED-{index + 1}</td>
+                          <td style={{ padding: '16px 12px', color: '#5c4a42', fontWeight: '600' }}>
+                            {getInventoryItemCodeForStockRow(item, stockRow) || '...'}
+                          </td>
                           <td style={{ padding: '16px 12px', fontWeight: '600', color: '#2c221e', verticalAlign: 'middle' }}>
                             {item.name}
                             {todayUsed > 0 && (
@@ -640,6 +719,15 @@ export default function PharmacyInventory() {
                           </td>
                           <td style={{ padding: '16px 12px', textAlign: 'center' }}>
                             <button type="button" onClick={() => handleOpenIngredientModal(item)} style={{ background: '#f3ede2', border: 'none', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', color: '#4a3f35', fontWeight: '600', marginRight: '6px' }}>යාවත්කාලීන කරන්න</button>
+                            {lowStock && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenIngredientSupplyRequest(item)}
+                                style={{ background: '#1a5a38', border: 'none', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', color: '#fff', fontWeight: '600', marginRight: '6px' }}
+                              >
+                                සැපයුම් ඉල්ලීම
+                              </button>
+                            )}
                             <button type="button" onClick={() => handleDeleteIngredient(item.id)} style={{ background: '#fee2e2', border: 'none', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', color: '#991b1b' }} aria-label={`${item.name} මකන්න`}>🗑️</button>
                           </td>
                         </tr>
@@ -856,6 +944,52 @@ export default function PharmacyInventory() {
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button type="button" onClick={() => setShowIngredientModal(false)} style={{ flex: 1, background: '#f3ede2', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', color: '#5c4a42' }}>අවලංගු කරන්න</button>
                 <button type="submit" style={{ flex: 1, background: '#1a5a38', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>සුරකින්න</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {showIngredientSupplyRequestModal && ingredientSupplyRequestItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', padding: '30px', borderRadius: '16px', width: '440px', maxWidth: '90%', boxShadow: '0 15px 30px rgba(0,0,0,0.15)' }}>
+            <h3 style={{ margin: '0 0 12px', color: '#1a5a38', fontSize: '18px', fontWeight: 'bold' }}>
+              {ingredientSupplyRequestItem.name} සඳහා සැපයුම් ඉල්ලීම
+            </h3>
+            <p style={{ margin: '0 0 18px', color: '#64748b', fontSize: '13px' }}>
+              දැනට තොගය: {getInventoryQuantity(ingredientSupplyRequestItem)} {ingredientSupplyRequestItem.unit || 'ඒකක'}
+            </p>
+            <form onSubmit={handleIngredientSupplyRequest} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4a3f35' }}>
+                සැපයුම්කරුගෙන් ඉල්ලන ප්‍රමාණය ({ingredientSupplyRequestItem.unit || 'ඒකක'})
+                <input
+                  type="number"
+                  min="0.01"
+                  step="any"
+                  value={ingredientSupplyRequestQuantity}
+                  onChange={(event) => setIngredientSupplyRequestQuantity(event.target.value)}
+                  required
+                  style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: '5px', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                />
+              </label>
+              <small style={{ color: '#64748b' }}>
+                Admin වෙත මෙම ප්‍රමාණය යවා, වට්ටෝරුව අනුව සෑදිය හැකි ඖෂධ ප්‍රමාණය ගණනය කළ හැක.
+              </small>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowIngredientSupplyRequestModal(false)}
+                  disabled={submittingIngredientSupplyRequest}
+                  style={{ flex: 1, background: '#f3ede2', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', color: '#5c4a42' }}
+                >
+                  අවලංගු කරන්න
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingIngredientSupplyRequest}
+                  style={{ flex: 1, background: '#1a5a38', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  {submittingIngredientSupplyRequest ? 'යවමින්...' : 'Admin වෙත යවන්න'}
+                </button>
               </div>
             </form>
           </div>

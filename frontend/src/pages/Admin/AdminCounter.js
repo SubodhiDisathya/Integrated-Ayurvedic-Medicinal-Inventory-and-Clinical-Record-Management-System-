@@ -156,6 +156,18 @@ export default function AdminCounter() {
   const getRequestIngredientNames = (request) =>
     getLowStockRequestIngredients(request, inventoryItemsById[request.inventoryId]);
   const getRequestIngredientDetails = (request) => {
+    if (request.requestType === 'ingredient') {
+      const ingredientName = request.ingredientName || request.itemName;
+      const requestedQuantity = Number(request.quantity);
+      return ingredientName
+        ? [{
+          name: ingredientName,
+          quantity: Number.isFinite(requestedQuantity) ? requestedQuantity : null,
+          unit: request.unit || ''
+        }]
+        : [];
+    }
+
     const recipeIngredients = getRecipeIngredientsForRequest(medicineRecipes, request);
     if (recipeIngredients.length > 0) return recipeIngredients;
     return getRequestIngredientNames(request).map((name) => ({ name, quantity: null, unit: '' }));
@@ -260,7 +272,7 @@ export default function AdminCounter() {
                     {selectedStatFilter === 'patients' ? (
                       <tr><th>නම</th><th>රෝගී අංකය</th><th>දුරකථන අංකය</th><th>වයස</th></tr>
                     ) : selectedStatFilter === 'supplyRequests' ? (
-                      <tr><th>ඖෂධය</th><th>අංකය</th><th>අවශ්‍ය අමුද්‍රව්‍ය</th><th>දැනට ඇති තොගය</th></tr>
+                      <tr><th>ඖෂධය / අමුද්‍රව්‍යය</th><th>අංකය</th><th>අවශ්‍ය අමුද්‍රව්‍ය</th><th>දැනට ඇති තොගය</th></tr>
                     ) : selectedStatFilter === 'suppliers' ? (
                       <tr><th>සැපයුම්කරු</th><th>වර්ගය</th><th>දුරකථන අංකය</th><th>විද්‍යුත් තැපෑල</th></tr>
                     ) : (
